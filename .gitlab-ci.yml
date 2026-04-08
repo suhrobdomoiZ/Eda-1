@@ -1,0 +1,29 @@
+stages:
+  - lint
+  - test #TODO:прописать для теста
+  - build #TODO:прописать для сборки
+
+
+lint:
+  stage: lint
+
+  image: golangci/golangci-lint:v1.60.1
+
+  variables:
+    GIT_DEPTH: 50
+    GO_VERSION: "1.26.1"
+
+  before_script:
+    - go mod download
+
+  script:
+    - golangci-lint run --new-from-rev=origin/main --timeout=5m
+
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-lint
+    paths:
+      - .cache/golangci-lint
+
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
