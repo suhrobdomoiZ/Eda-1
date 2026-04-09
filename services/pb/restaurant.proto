@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+option go_package = "pkg/api/external";
+
+package pb;
+
+
+service Restaurant{
+  rpc AddProduct(AddProductRequest) returns(AddProductResponse);
+  rpc UpdateProduct(UpdateProductRequest) returns(UpdateProductResponse);
+  rpc DeleteProduct(DeleteProductRequest) returns(DeleteProductResponse);
+  rpc ListProducts(ListProductsRequest) returns(ListProductsResponse);
+  rpc GetProduct(GetProductRequest) returns(GetProductResponse);
+
+  rpc ChangeOrderStatus(ChangeOrderStatusRequest) returns(ChangeOrderStatusResponse);
+  rpc ListOrders(ListOrdersRequest) returns(ListOrdersResponse);
+}
+
+
+message AddProductRequest{
+
+}
+
+message AddProductResponse{
+
+}
+message UpdateProductRequest{
+
+}
+message UpdateProductResponse{
+
+}
+
+message DeleteProductRequest{
+
+}
+
+message DeleteProductResponse{
+
+}
+
+message ListProductsRequest{
+
+}
+message ListProductsResponse{
+
+}
+
+
+message GetProductRequest{
+
+}
+message GetProductResponse{
+
+}
+message ChangeOrderStatusRequest{
+
+}
+message ChangeOrderStatusResponse{
+
+}
+
+message ListOrdersRequest{
+
+}
+
+message ListOrdersResponse{
+
+}
