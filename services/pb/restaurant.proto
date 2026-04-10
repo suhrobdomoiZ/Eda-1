@@ -1,69 +1,130 @@
 syntax = "proto3";
 
-option go_package = "pkg/api/external";
+option go_package = "pkg/api";
 
 package pb;
 
 
 service Restaurant{
-  rpc AddProduct(AddProductRequest) returns(AddProductResponse);
-  rpc UpdateProduct(UpdateProductRequest) returns(UpdateProductResponse);
-  rpc DeleteProduct(DeleteProductRequest) returns(DeleteProductResponse);
-  rpc ListProducts(ListProductsRequest) returns(ListProductsResponse);
-  rpc GetProduct(GetProductRequest) returns(GetProductResponse);
+  rpc AddProduct(AddProductRequest) returns(AddProductResponse); //добавляет продукт в меню
+  rpc UpdateProduct(UpdateProductRequest) returns(UpdateProductResponse); //изменяет продукт в меню
+  rpc DeleteProduct(DeleteProductRequest) returns(DeleteProductResponse); //удаляет продукт из меню
 
-  rpc ChangeOrderStatus(ChangeOrderStatusRequest) returns(ChangeOrderStatusResponse);
-  rpc ListOrders(ListOrdersRequest) returns(ListOrdersResponse);
+  rpc ListProducts(ListProductsRequest) returns(ListProductsResponse); //показывает все продукты(то есть меню)
+  rpc GetProduct(GetProductRequest) returns(GetProductResponse); //показывает продукт по id
+
+  rpc ChangeOrderStatus(ChangeOrderStatusRequest) returns(ChangeOrderStatusResponse); //после передачи в доставку меняет статус
+  rpc ListOrders(ListOrdersRequest) returns(ListOrdersResponse); //возвращает список заказов
 }
 
+message DeliveryAddress {
+  string street = 1;                        // Улица
+  string building = 2;                      // Дом
+  string apartment = 3;                     // Квартира
+  string entrance = 4;                      // Подъезд
+  string floor = 5;                         // Этаж
+  string comment = 6;                       // Комментарий курьеру
+}
+
+message OrderItem {
+  string product_id = 1;                    // id товара
+  string name = 2;                          // Название
+  int32 quantity = 3;                       // Количество
+  int64 price = 4;                          // Цена
+}
+
+message Order {
+  string id = 1;                            // id заказа
+  string restaurant_id = 2;                 // id ресторана
+  string courier_id = 3;                    // id курьера
+  string client_id = 4;                     // id заказчика
+  DeliveryAddress address = 5;              // Адрес доставки
+  repeated OrderItem items = 6;             // Товары в заказе
+  int64 total_price = 7;                    // Общая стоимость
+  OrderStatus status = 8;                   // Статус заказа
+}
+
+enum OrderStatus {
+  ORDER_STATUS_CREATED = 0;                 // Создан
+  ORDER_STATUS_COOKING = 1;                 // Готовится
+  ORDER_STATUS_READY = 2;                   // Готов
+  ORDER_STATUS_DELIVERING = 3;              // В процессе доставки
+  ORDER_STATUS_DELIVERED = 4;               // Отдан заказчику
+  ORDER_STATUS_CANCELED = 5;                // Отменен
+}
+
+message ProductInfo{
+  string restaurant_id = 1;
+  string name = 2;
+  string description = 3;
+  int64 price = 4;
+}
+
+message FullProduct{
+  string id = 1;
+  ProductInfo info = 2;
+}
 
 message AddProductRequest{
-
+  ProductInfo product_info = 1;
 }
 
 message AddProductResponse{
-
+  string id = 1;
+  string status = 2;
 }
+
 message UpdateProductRequest{
-
+  string id = 1;
+  ProductInfo product_info = 2;
 }
-message UpdateProductResponse{
 
+message UpdateProductResponse{
+  string id = 1;
+  string status = 2;
 }
 
 message DeleteProductRequest{
-
+  string id = 1;
 }
 
 message DeleteProductResponse{
-
+  string status = 1;
 }
 
 message ListProductsRequest{
-
+  string restaurant_id = 1;
 }
+
 message ListProductsResponse{
-
+  string status = 1;
+  repeated FullProduct products = 2;
 }
-
 
 message GetProductRequest{
-
+  string id = 1; //id продукта, ресторан не нужен так как оно и так уникальное
 }
+
 message GetProductResponse{
-
+  string status = 1;
+  FullProduct product = 2;
 }
+
 message ChangeOrderStatusRequest{
-
+  string id = 1; //id заказа
+  OrderStatus status = 2;
 }
-message ChangeOrderStatusResponse{
 
+message ChangeOrderStatusResponse{
+  string id = 1;
+  string status = 2;//внутренний статус, не статус заказа
 }
 
 message ListOrdersRequest{
-
+  string id = 1;//id ресторана
 }
 
 message ListOrdersResponse{
-
+  string status = 1;
+  repeated Order orders = 2;
 }
