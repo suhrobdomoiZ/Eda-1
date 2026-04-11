@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package courier;
+import "common.proto";
+
+option go_package = "github.com/suhrobdomoiZ/Eda-1/services/courier/internal/api";
+
+// API заказчика
+service ClientAPI {
+  rpc GetAvailableOrders(GetAvailableOrdersRequest) returns (GetAvailableOrdersResponse);
+  rpc AcceptOrder(AcceptOrderRequest) returns (AcceptOrderResponse);
+  rpc GetMyOrders(GetMyOrdersRequest) returns (GetMyOrdersResponse);
+  rpc PickUpOrder(PickUpOrderRequest) returns (PickUpOrderResponse);
+  rpc DeliverOrder(DeliverOrderRequest) returns (DeliverOrderResponse);
+}
+
+// Получение информации о заказе
+
+message GetAvailableOrdersRequest {
+  int32 limit = 1;
+}
+
+message GetAvailableOrdersResponse {
+  repeated common.Order orders = 1;
+}
+
+// Принять заказ
+
+message AcceptOrderRequest {
+  string order_id = 1;
+}
+
+message AcceptOrderResponse {
+  bool success = 1;
+  common.Order order = 2;                   // Полная информация о заказе
+}
+
+// Получение заказов курьера
+
+message GetMyOrdersRequest {
+  string courier_id = 1;
+}
+
+message GetMyOrdersResponse {
+  repeated common.Order orders = 1;
+}
+
+// Забрать заказ из ресторана
+
+message PickUpOrderRequest {
+  string order_id = 1;
+}
+
+message PickUpOrderResponse {
+  bool success = 1;
+  common.OrderStatus status = 2;
+}
+
+// Доставить заказ клиенту
+
+message DeliverOrderRequest {
+  string order_id = 1;
+}
+
+message DeliverOrderResponse {
+  bool success = 1;
+  common.OrderStatus status = 2;
+  int64 earnings = 3;                       // Заработок за этот заказ
+}

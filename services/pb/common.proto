@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/suhrobdomoiZ/Eda-1/pkg/api/common";
+
+// Статусы заказа
+enum OrderStatus {
+  ORDER_STATUS_CREATED = 0;                 // Создан
+  ORDER_STATUS_COOKING = 1;                 // Готовится
+  ORDER_STATUS_READY = 2;                   // Готов
+  ORDER_STATUS_DELIVERING = 3;              // В процессе доставки
+  ORDER_STATUS_DELIVERED = 4;               // Отдан заказчику
+  ORDER_STATUS_CANCELED = 5;                // Отменен
+}
+
+// Позиция в заказе
+message OrderItem {
+  string product_id = 1;                    // id товара
+  string name = 2;                          // Название
+  int32 quantity = 3;                       // Количество
+  int64 price = 4;                          // Цена
+}
+
+// Модель заказа
+message Order {
+  string id = 1;                            // id заказа
+  string restaurant_id = 2;                 // id ресторана
+  string courier_id = 3;                    // id курьера
+  string client_id = 4;                     // id заказчика
+  string address = 5;                       // Адрес доставки
+  repeated OrderItem items = 6;             // Товары в заказе
+  int64 total_price = 7;                    // Общая стоимость
+  OrderStatus status = 8;                   // Статус заказа
+}
+
+// Адрес доставки (пока оставил на будущее)
+message DeliveryAddress {
+  string street = 1;
+  string building = 2;
+  string apartment = 3;
+  string entrance = 4;
+  string floor = 5;
+  string comment = 6;
+}
