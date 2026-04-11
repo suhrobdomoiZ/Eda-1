@@ -4,7 +4,7 @@
 // 	protoc        v6.33.5
 // source: courier.proto
 
-package courier
+package api
 
 import (
 	common "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
@@ -529,7 +529,7 @@ const file_courier_proto_rawDesc = "" +
 	"\vAcceptOrder\x12\x1b.courier.AcceptOrderRequest\x1a\x1c.courier.AcceptOrderResponse\x12H\n" +
 	"\vGetMyOrders\x12\x1b.courier.GetMyOrdersRequest\x1a\x1c.courier.GetMyOrdersResponse\x12H\n" +
 	"\vPickUpOrder\x12\x1b.courier.PickUpOrderRequest\x1a\x1c.courier.PickUpOrderResponse\x12K\n" +
-	"\fDeliverOrder\x12\x1c.courier.DeliverOrderRequest\x1a\x1d.courier.DeliverOrderResponseB/Z-github.com/suhrobdomoiZ/Eda-1/pkg/api/courierb\x06proto3"
+	"\fDeliverOrder\x12\x1c.courier.DeliverOrderRequest\x1a\x1d.courier.DeliverOrderResponseB=Z;github.com/suhrobdomoiZ/Eda-1/services/courier/internal/apib\x06proto3"
 
 var (
 	file_courier_proto_rawDescOnce sync.Once

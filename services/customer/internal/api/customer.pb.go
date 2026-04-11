@@ -4,7 +4,7 @@
 // 	protoc        v6.33.5
 // source: customer.proto
 
-package customer
+package api
 
 import (
 	common "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
@@ -906,7 +906,7 @@ const file_customer_proto_rawDesc = "" +
 	"\vCancelOrder\x12\x1c.customer.CancelOrderRequest\x1a\x1d.customer.CancelOrderResponse\x12M\n" +
 	"\fListMyOrders\x12\x1d.customer.ListMyOrdersRequest\x1a\x1e.customer.ListMyOrdersResponse\x12\\\n" +
 	"\x11GetRestaurantMenu\x12\".customer.GetRestaurantMenuRequest\x1a#.customer.GetRestaurantMenuResponse\x12V\n" +
-	"\x0fListRestaurants\x12 .customer.ListRestaurantsRequest\x1a!.customer.ListRestaurantsResponseB0Z.github.com/suhrobdomoiZ/Eda-1/pkg/api/customerb\x06proto3"
+	"\x0fListRestaurants\x12 .customer.ListRestaurantsRequest\x1a!.customer.ListRestaurantsResponseB>Z<github.com/suhrobdomoiZ/Eda-1/services/customer/internal/apib\x06proto3"
 
 var (
 	file_customer_proto_rawDescOnce sync.Once

@@ -4,7 +4,7 @@
 // - protoc             v6.33.5
 // source: courier.proto
 
-package courier
+package api
 
 import (
 	context "context"

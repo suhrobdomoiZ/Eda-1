@@ -3,7 +3,7 @@ syntax = "proto3";
 package courier;
 import "common.proto";
 
-option go_package = "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier";
+option go_package = "github.com/suhrobdomoiZ/Eda-1/services/courier/internal/api";
 
 // API заказчика
 service ClientAPI {
