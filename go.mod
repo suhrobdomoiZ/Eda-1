@@ -1,6 +1,6 @@
 module github.com/suhrobdomoiZ/Eda-1
 
-go 1.24.0
+go 1.26.1
 
 require (
 	google.golang.org/grpc v1.80.0
