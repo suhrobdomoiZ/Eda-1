@@ -1,14 +1,51 @@
-EXECUTABLE_NAME=eda-one
+PB_DIR=./services/pb
 
-PROTO_PKG=./pkg/api
-PROTO_RESTAURANT_PATH=./services/pb/restaurant.proto
+PROTO_COMMON_PATH=$(PB_DIR)/common.proto
+PROTO_CUSTOMER_PATH=$(PB_DIR)/customer.proto
+PROTO_COURIER_PATH=$(PB_DIR)/courier.proto
+PROTO_RESTAURANT_PATH=$(PB_DIR)/restaurant.proto
+
+CUSTOMER_PATH=./services/customer/cmd/main.go
+COURIER_PATH=./services/courier/cmd/main.go
 RESTAURANT_PATH=./services/restaurant/cmd/main.go
 
-all: generate
+all: proto
 
-generate:
+proto: generate-common generate-customer generate-courier generate-restaurant
+	@echo "All proto generated"
+
+generate-common:
+	@echo "Generating common.pb.go"
+	protoc -I $(PB_DIR) \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		--go-grpc_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		$(PROTO_COMMON_PATH)
+
+generate-customer:
+	@echo "Generating customer.pb.go"
+	protoc -I $(PB_DIR) \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		--go-grpc_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		$(PROTO_CUSTOMER_PATH)
+
+generate-courier:
+	@echo "Generating courier.pb.go"
+	protoc -I $(PB_DIR) \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		--go-grpc_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		$(PROTO_COURIER_PATH)
+
+generate-restaurant:
 	@echo "Generating restaurant.pb.go"
-	protoc -I ./ \
-		--go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+	protoc -I $(PB_DIR) \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		--go-grpc_opt=module=github.com/suhrobdomoiZ/Eda-1 \
 		$(PROTO_RESTAURANT_PATH)
