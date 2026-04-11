@@ -7,8 +7,75 @@ services:
       POSTGRES_DB: ${DATABASE_NAME}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - backend
+
+  api_gateway:
+    build:
+      context: .
+      dockerfile: services/api_gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  courier:
+    build:
+      context: .
+      dockerfile: services/courier/Dockerfile
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  customer:
+    build:
+      context: .
+      dockerfile: services/customer/Dockerfile
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  restaurant:
+    build:
+      context: .
+      dockerfile: services/restaurant/Dockerfile
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pgdata:
