@@ -15,7 +15,7 @@ enum OrderStatus {
 }
 
 // Позиция в заказе
-message OrderItem {
+message OrderItem {                         //OrderedProduct в бд
   string product_id = 1;                    // id товара
   string name = 2;                          // Название
   int32 quantity = 3;                       // Количество

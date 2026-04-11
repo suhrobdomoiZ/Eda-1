@@ -4,6 +4,7 @@ option go_package = "github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/
 
 package pb;
 
+import "common.proto";
 
 service Restaurant{
   rpc AddProduct(AddProductRequest) returns(AddProductResponse); //добавляет продукт в меню
@@ -15,42 +16,6 @@ service Restaurant{
 
   rpc ChangeOrderStatus(ChangeOrderStatusRequest) returns(ChangeOrderStatusResponse); //после передачи в доставку меняет статус
   rpc ListOrders(ListOrdersRequest) returns(ListOrdersResponse); //возвращает список заказов
-}
-
-message DeliveryAddress {
-  string street = 1;                        // Улица
-  string building = 2;                      // Дом
-  string apartment = 3;                     // Квартира
-  string entrance = 4;                      // Подъезд
-  string floor = 5;                         // Этаж
-  string comment = 6;                       // Комментарий курьеру
-}
-
-message OrderItem {
-  string product_id = 1;                    // id товара
-  string name = 2;                          // Название
-  int32 quantity = 3;                       // Количество
-  int64 price = 4;                          // Цена
-}
-
-message Order {
-  string id = 1;                            // id заказа
-  string restaurant_id = 2;                 // id ресторана
-  string courier_id = 3;                    // id курьера
-  string client_id = 4;                     // id заказчика
-  DeliveryAddress address = 5;              // Адрес доставки
-  repeated OrderItem items = 6;             // Товары в заказе
-  int64 total_price = 7;                    // Общая стоимость
-  OrderStatus status = 8;                   // Статус заказа
-}
-
-enum OrderStatus {
-  ORDER_STATUS_CREATED = 0;                 // Создан
-  ORDER_STATUS_COOKING = 1;                 // Готовится
-  ORDER_STATUS_READY = 2;                   // Готов
-  ORDER_STATUS_DELIVERING = 3;              // В процессе доставки
-  ORDER_STATUS_DELIVERED = 4;               // Отдан заказчику
-  ORDER_STATUS_CANCELED = 5;                // Отменен
 }
 
 message ProductInfo{
@@ -112,7 +77,7 @@ message GetProductResponse{
 
 message ChangeOrderStatusRequest{
   string id = 1; //id заказа
-  OrderStatus status = 2;
+  common.OrderStatus status = 2;
 }
 
 message ChangeOrderStatusResponse{
@@ -126,5 +91,5 @@ message ListOrdersRequest{
 
 message ListOrdersResponse{
   string status = 1;
-  repeated Order orders = 2;
+  repeated common.Order orders = 2;
 }
