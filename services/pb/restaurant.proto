@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "pkg/api";
+option go_package = "github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/api";
 
 package pb;
 
