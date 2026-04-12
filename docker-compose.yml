@@ -29,6 +29,35 @@ services:
     networks:
       - backend
 
+  kafka:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_NODE_ID: ${KAFKA_NODE_ID}
+      KAFKA_PROCESS_ROLES: ${KAFKA_PROCESS_ROLES}
+      CLUSTER_ID: ${CLUSTER_ID}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
+      KAFKA_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
+      KAFKA_DEFAULT_REPLICATION_FACTOR: ${KAFKA_DEFAULT_REPLICATION_FACTOR}
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "9092:9092"
+    networks:
+      - backend
+
   nginx:
     image: nginx:alpine
     ports:
@@ -66,8 +95,14 @@ services:
     build:
       context: .
       dockerfile: services/courier/Dockerfile
-    env_file: .env
+    env_file:
+      - .env
+      - services/courier/.env
+    environment:
+      - KAFKA_CONSUMER_GROUP=courier-service
     depends_on:
+      kafka:
+        condition: service_healthy
       database:
         condition: service_healthy
     networks:
@@ -77,8 +112,14 @@ services:
     build:
       context: .
       dockerfile: services/customer/Dockerfile
-    env_file: .env
+    env_file:
+      - .env
+      - services/customer/.env
+    environment:
+      - KAFKA_CONSUMER_GROUP=customer-service
     depends_on:
+      kafka:
+        condition: service_healthy
       database:
         condition: service_healthy
     networks:
@@ -88,8 +129,14 @@ services:
     build:
       context: .
       dockerfile: services/restaurant/Dockerfile
-    env_file: .env
+    env_file:
+     - .env
+     - services/restaurant/.env
+    environment:
+      - KAFKA_CONSUMER_GROUP=restaurant-service
     depends_on:
+      kafka:
+        condition: service_healthy
       database:
         condition: service_healthy
     networks:
@@ -102,4 +149,4 @@ networks:
 volumes:
   pgdata:
   redisdata:
-
+  kafkadata:
