@@ -43,3 +43,40 @@ message DeliveryAddress {
   string floor = 5;
   string comment = 6;
 }
+
+
+enum UserRole {
+  USER_ROLE_CUSTOMER    = 0;
+  USER_ROLE_RESTAURANT  = 1;
+  USER_ROLE_COURIER     = 2;
+  USER_ROLE_ADMIN       = 3;
+}
+
+
+// Базовый профиль - для любого пользователя
+message UserProfile {
+  string id         = 1;   // UUID
+  string username   = 2;
+  UserRole role     = 3;
+}
+
+// Расширенный профиль ресторана
+message RestaurantProfile {
+  string id          = 1;
+  string name        = 2;
+  string description = 3;
+  string address     = 4;
+  string phone       = 5;
+  double rating      = 6;   // средний рейтинг 
+  bool   is_open     = 7;
+}
+
+// Расширенный профиль курьера
+message CourierProfile {
+  string id        = 1;
+  string name      = 2;
+  string phone     = 3;
+  bool   is_active = 4;   // доступен для заказов
+  double rating    = 5;   // средний рейтинг 
+  int64  earnings  = 6;   // общий заработок
+}

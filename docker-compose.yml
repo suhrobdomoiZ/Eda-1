@@ -16,6 +16,19 @@ services:
     networks:
       - backend
 
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
   nginx:
     image: nginx:alpine
     ports:
@@ -88,3 +101,5 @@ networks:
 
 volumes:
   pgdata:
+  redisdata:
+

@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package auth;
+import "common.proto";
+
+option go_package = "github.com/suhrobdomoiZ/Eda-1/services/auth/internal/api";
+
+service AuthService {
+  rpc Register      (RegisterRequest)      returns (RegisterResponse);
+  rpc Login         (LoginRequest)         returns (LoginResponse);
+  rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc RefreshToken  (RefreshTokenRequest)  returns (RefreshTokenResponse);
+  rpc GetProfile    (GetProfileRequest)    returns (GetProfileResponse);
+  rpc Logout        (LogoutRequest)        returns (LogoutResponse);
+}
+
+// ===== Токены =====
+
+message TokenPair {
+  string access_token  = 1;   // короткий TTL - 15 мин
+  string refresh_token = 2;   // длинный TTL - 7 дней
+}
+
+// Claims, которые сервисы достают из JWT без обращения к auth
+message TokenClaims {
+  string           user_id = 1;
+  common.UserRole  role    = 2;
+  int64            exp     = 3;   // unix timestamp
+}
+
+
+message RegisterRequest {
+  string          username = 1;
+  string          password = 2;
+  common.UserRole role     = 3;   // клиент выбирает тип аккаунта при регистрации
+
+  // Доп. поля - заполняются в зависимости от роли
+  oneof profile {
+    RestaurantRegisterInfo restaurant = 4;
+    CourierRegisterInfo    courier    = 5;
+  }
+}
+
+message RestaurantRegisterInfo {
+  string name    = 1;
+  string address = 2;
+  string phone   = 3;
+}
+
+message CourierRegisterInfo {
+  string name  = 1;
+  string phone = 2;
+}
+
+message RegisterResponse {
+  string    user_id = 1;
+  TokenPair tokens  = 2;
+}
+
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string           user_id = 1;
+  common.UserRole  role    = 2;
+  TokenPair        tokens  = 3;
+}
+
+// Вызывается другими сервисами для проверки входящего JWT
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool        valid  = 1;
+  TokenClaims claims = 2;   // заполнено только если valid = true
+}
+
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  TokenPair tokens = 1;
+}
+
+// Возвращает профиль текущего пользователя (user_id берётся из токена на сервере)
+message GetProfileRequest {
+  string user_id = 1;
+}
+
+message GetProfileResponse {
+  common.UserProfile user = 1;
+
+  oneof extended {
+    common.RestaurantProfile restaurant = 2;
+    common.CourierProfile    courier    = 3;
+  }
+}
+
+
+message LogoutRequest {
+  string refresh_token = 1;   // инвалидируем конкретный refresh token
+}
+
+message LogoutResponse {
+  bool success = 1;
+}
