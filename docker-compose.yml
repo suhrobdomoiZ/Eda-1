@@ -114,9 +114,10 @@ services:
       dockerfile: services/customer/Dockerfile
     env_file:
       - .env
-      - services/customer/.env
     environment:
       - KAFKA_CONSUMER_GROUP=customer-service
+    ports:
+      - "9002:9002"
     depends_on:
       kafka:
         condition: service_healthy
