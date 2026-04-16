@@ -34,8 +34,16 @@ func (r *Restaurant) AddProduct(ctx context.Context, request *api.AddProductRequ
 	return models.ConvertUUIDToAddProductResponse(result), nil
 }
 
-func (r *Restaurant) UpdateProduct(context.Context, *api.UpdateProductRequest) (*api.UpdateProductResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+func (r *Restaurant) UpdateProduct(ctx context.Context, request *api.UpdateProductRequest) (*api.UpdateProductResponse, error) {
+	product, err := models.ConvertUpdateProductRequestToFullProduct(request)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+	result, err := r.svc.UpdateProduct(ctx, product)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+	return models.ConvertUUIDTOUpdateProductResponse(result), nil
 }
 
 func (r *Restaurant) DeleteProduct(context.Context, *api.DeleteProductRequest) (*api.DeleteProductResponse, error) {

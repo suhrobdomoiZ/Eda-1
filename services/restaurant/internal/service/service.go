@@ -25,3 +25,12 @@ func (s *Restaurant) AddProduct(ctx context.Context, productInfo *models.Product
 
 	return productId, nil
 }
+
+func (s *Restaurant) UpdateProduct(ctx context.Context, product *models.FullProduct) (uuid.UUID, error) {
+	productId, err := s.repo.UpdateProductInMenu(ctx, product)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return productId, nil
+}

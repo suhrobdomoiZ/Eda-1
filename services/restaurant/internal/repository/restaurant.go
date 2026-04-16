@@ -35,23 +35,54 @@ func (r *Restaurant) AddProductIntoMenu(ctx context.Context, productInfo *models
 		productInfo.Price,
 	)
 	if err != nil {
-		// 👇 Проверяем, является ли ошибка специфичной ошибкой PostgreSQL
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
-			case "23505": //TODO:найти коды ошибок, наподобие http.StatusOK
+			case "23505":
 				return uuid.Nil, utils.ErrProductAlreadyExists
-			case "23503": // foreign_key_violation
+			case "23503":
 				return uuid.Nil, utils.ErrInvalidRestaurantID
-			case "23514": // check_violation
+			case "23514":
 				return uuid.Nil, utils.ErrValidationFailed
 			}
 		}
-		// 👇 Всё остальное — оборачиваем с контекстом
 		return uuid.Nil, fmt.Errorf("add product: %w", err)
 	}
 
 	return productId, nil
 }
 
-//TODO:implement IRestaurant
+func (r *Restaurant) UpdateProductInMenu(ctx context.Context, product *models.FullProduct) (uuid.UUID, error) {
+	query := `
+	UPDATE products
+	SET
+    name = $2,
+    description = $3,
+    price = $4,
+    WHERE id = $1 AND restaurant_id = $5;
+	`
+	_, err := r.GetExecutor(ctx).Exec(
+		ctx,
+		query,
+		product.Id,
+		product.Name,
+		product.Description,
+		product.Price,
+		product.RestaurantId,
+	)
+
+	//TODO: самостоятельно написать коды
+	if err != nil {
+		var pgErr *pgconn.PgError
+		switch pgErr.Code {
+		case "23503":
+			return uuid.Nil, utils.ErrInvalidRestaurantID
+		case "23514":
+			return uuid.Nil, utils.ErrValidationFailed
+		case "23502":
+			return uuid.Nil, utils.ErrValidationFailed
+		}
+	}
+
+	return product.Id, nil
+}
