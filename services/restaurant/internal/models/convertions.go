@@ -6,7 +6,7 @@ import (
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
 )
 
-func AddProductRequestToProductInfo(recent *api.AddProductRequest) (*ProductInfo, error) {
+func ConvertAddProductRequestToProductInfo(recent *api.AddProductRequest) (*ProductInfo, error) {
 	stringId := recent.ProductInfo.RestaurantId
 	if stringId == "" {
 		return nil, utils.ErrRestaurantIDInvalid

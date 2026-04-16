@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/suhrobdomoiZ/Eda-1/services/api"
+	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,7 +20,13 @@ func NewRestaurant(restaurant service.Restaurant) *Restaurant {
 	return &Restaurant{svc: restaurant}
 }
 
-func (r *Restaurant) AddProduct(context.Context, *api.AddProductRequest) (*api.AddProductResponse, error) {
+func (r *Restaurant) AddProduct(ctx context.Context, request *api.AddProductRequest) (*api.AddProductResponse, error) {
+
+	productInfo, err := models.ConvertAddProductRequestToProductInfo(request)
+	if err != nil {
+		return nil, fmt.Errorf("handlers.AddProduct: %w", err)
+	}
+
 	return nil, status.Error(codes.Unimplemented, "")
 }
 
