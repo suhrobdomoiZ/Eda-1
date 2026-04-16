@@ -2,7 +2,6 @@ package models
 
 import (
 	"github.com/google/uuid"
-	"github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 )
 
 type ProductInfo struct {

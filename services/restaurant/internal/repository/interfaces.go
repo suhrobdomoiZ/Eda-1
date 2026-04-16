@@ -24,5 +24,5 @@ type IExecutor interface {
 }
 
 type IRestaurant interface {
-	AddProductIntoMenu(context.Context, *models.ProductInfo) (*uuid.UUID, error)
+	AddProductIntoMenu(context.Context, *models.ProductInfo) (uuid.UUID, error)
 }

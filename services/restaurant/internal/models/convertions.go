@@ -38,3 +38,10 @@ func ConvertAddProductRequestToProductInfo(recent *api.AddProductRequest) (*Prod
 		Price:        price,
 	}, nil
 }
+
+func ConvertUUIDToAddProductResponse(uuid uuid.UUID) *api.AddProductResponse {
+	return &api.AddProductResponse{
+		Id:     uuid.String(),
+		Status: utils.StatusOK,
+	}
+}
