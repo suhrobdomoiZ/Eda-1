@@ -43,3 +43,12 @@ func (s *Restaurant) DeleteProduct(ctx context.Context, productId *models.Produc
 
 	return nil
 }
+
+func (s *Restaurant) ListProducts(ctx context.Context, restaurantId *models.RestaurantId) ([]models.FullProduct, error) {
+	result, err := s.repo.ListProducts(ctx, restaurantId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, err
+}

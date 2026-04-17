@@ -6,17 +6,19 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
 )
 
 type Restaurant struct {
-	Executor
+	pool *pgxpool.Pool
 }
 
-func NewRestaurant(executor Executor) *Restaurant {
-	return &Restaurant{executor}
+func NewRestaurant(pool *pgxpool.Pool) *Restaurant {
+	return &Restaurant{pool}
 }
 
 func (r *Restaurant) AddProductIntoMenu(ctx context.Context, productInfo *models.ProductInfo) (uuid.UUID, error) {
@@ -25,7 +27,7 @@ func (r *Restaurant) AddProductIntoMenu(ctx context.Context, productInfo *models
 		VALUES($1, $2, $3, $4, $5);
     `
 	productId := uuid.New()
-	_, err := r.GetExecutor(ctx).Exec(
+	_, err := r.pool.Exec(
 		ctx,
 		query,
 		productId,
@@ -38,11 +40,11 @@ func (r *Restaurant) AddProductIntoMenu(ctx context.Context, productInfo *models
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
-			case "23505":
+			case pgerrcode.UniqueViolation:
 				return uuid.Nil, utils.ErrProductAlreadyExists
-			case "23503":
+			case pgerrcode.ForeignKeyViolation:
 				return uuid.Nil, utils.ErrInvalidRestaurantID
-			case "23514":
+			case pgerrcode.CheckViolation:
 				return uuid.Nil, utils.ErrValidationFailed
 			}
 		}
@@ -61,7 +63,7 @@ func (r *Restaurant) UpdateProductInMenu(ctx context.Context, product *models.Fu
     price = $4,
     WHERE id = $1 AND restaurant_id = $5;
 	`
-	_, err := r.GetExecutor(ctx).Exec(
+	_, err := r.pool.Exec(
 		ctx,
 		query,
 		product.Id,
@@ -74,13 +76,15 @@ func (r *Restaurant) UpdateProductInMenu(ctx context.Context, product *models.Fu
 	//TODO: самостоятельно написать коды
 	if err != nil {
 		var pgErr *pgconn.PgError
-		switch pgErr.Code {
-		case "23503":
-			return uuid.Nil, utils.ErrInvalidRestaurantID
-		case "23514":
-			return uuid.Nil, utils.ErrValidationFailed
-		case "23502":
-			return uuid.Nil, utils.ErrValidationFailed
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case pgerrcode.ForeignKeyViolation:
+				return uuid.Nil, utils.ErrInvalidRestaurantID
+			case pgerrcode.CheckViolation:
+				return uuid.Nil, utils.ErrValidationFailed
+			case pgerrcode.NotNullViolation:
+				return uuid.Nil, utils.ErrValidationFailed
+			}
 		}
 		return uuid.Nil, fmt.Errorf("repository.UpdateProductInMenu: %w", err)
 	}
@@ -94,7 +98,7 @@ func (r *Restaurant) DeleteProductFromMenu(ctx context.Context, productId *model
 	WHERE id = $1;
 	`
 
-	result, err := r.GetExecutor(ctx).Exec(
+	result, err := r.pool.Exec(
 		ctx,
 		query,
 		productId.Id,
@@ -103,7 +107,7 @@ func (r *Restaurant) DeleteProductFromMenu(ctx context.Context, productId *model
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			switch pgErr.Code {
-			case "23503": // foreign_key_violation (есть заказы/ссылки на этот продукт)
+			case pgerrcode.ForeignKeyViolation:
 				return utils.ErrProductHasDependencies
 			}
 		}
@@ -115,4 +119,38 @@ func (r *Restaurant) DeleteProductFromMenu(ctx context.Context, productId *model
 	}
 
 	return nil
+}
+
+func (r *Restaurant) ListProducts(ctx context.Context, restaurantId *models.RestaurantId) ([]models.FullProduct, error) {
+	query := `
+	SELECT id, restaurant_id, name, description, price
+	FROM products
+	WHERE restaurant_id = $1;
+	`
+
+	rows, err := r.pool.Query(ctx, query, restaurantId.Id)
+	if err != nil {
+		return nil, fmt.Errorf("repository.ListProducts: %w", err)
+	}
+
+	defer rows.Close()
+	var products []models.FullProduct
+
+	for rows.Next() {
+		var product models.FullProduct
+		if err := rows.Scan(&product.Id, &product.RestaurantId, &product.Name, &product.Description, &product.Price); err != nil {
+			return nil, fmt.Errorf("list products scan: %w", err)
+		}
+		products = append(products, product)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repository.ListProducts: %w", err)
+	}
+
+	if products == nil {
+		products = []models.FullProduct{}
+	}
+
+	return products, nil
 }

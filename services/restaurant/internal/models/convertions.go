@@ -114,3 +114,37 @@ func ConvertStatusToDeleteProductResponse() *api.DeleteProductResponse {
 		Status: utils.StatusOK,
 	}
 }
+
+func ConvertListProductsRequestToRestaurantId(recent *api.ListProductsRequest) (*RestaurantId, error) {
+	stringRestaurantId := recent.RestaurantId
+	if stringRestaurantId == "" {
+		return nil, utils.ErrRestaurantIDRequired
+	}
+
+	restaurantId, err := uuid.Parse(recent.RestaurantId)
+	if err != nil {
+		return nil, utils.ErrRestaurantIdIsIncorrectValue
+	}
+
+	return &RestaurantId{Id: restaurantId}, nil
+}
+
+func ConvertSliceOfProductsToListProductsResponse(products []FullProduct) *api.ListProductsResponse {
+	pbProducts := make([]*api.FullProduct, len(products))
+	for i, p := range products {
+		pbProducts[i] = &api.FullProduct{
+			Id: p.Id.String(),
+			Info: &api.ProductInfo{
+				RestaurantId: p.RestaurantId.String(),
+				Name:         p.Name,
+				Description:  p.Description,
+				Price:        p.Price,
+			},
+		}
+	}
+
+	return &api.ListProductsResponse{
+		Status:   utils.StatusOK,
+		Products: pbProducts,
+	}
+}

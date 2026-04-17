@@ -22,3 +22,7 @@ type FullProduct struct {
 type ProductId struct {
 	Id uuid.UUID `json:"product_id"`
 }
+
+type RestaurantId struct {
+	Id uuid.UUID `json:"restaurant_id"`
+}
