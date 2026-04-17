@@ -28,4 +28,5 @@ type IRestaurant interface {
 	UpdateProductInMenu(context.Context, *models.FullProduct) (uuid.UUID, error)
 	DeleteProductFromMenu(ctx context.Context, productId *models.ProductId) error
 	ListProducts(ctx context.Context, restaurantId *models.RestaurantId) ([]models.FullProduct, error)
+	GetProduct(ctx context.Context, productId *models.ProductId) (*models.FullProduct, error)
 }

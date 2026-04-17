@@ -22,6 +22,9 @@ var (
 	ErrInvalidProductID          = errors.New("invalid product id")
 	ErrProductHasDependencies    = errors.New("product has dependencies")
 	ErrProductDoesNotFound       = errors.New("product does not exist")
+
+	ErrInvalidDataSchema = errors.New("invalid data schema")
+	ErrConnectionFailure = errors.New("connection failure")
 )
 
 func ToGRPC(err error) error {
@@ -35,7 +38,8 @@ func ToGRPC(err error) error {
 		errors.Is(err, ErrValidationFailed),
 		errors.Is(err, ErrInvalidRestaurantID),
 		errors.Is(err, ErrProductIdIsIncorrectValue),
-		errors.Is(err, ErrProductIDRequired):
+		errors.Is(err, ErrProductIDRequired),
+		errors.Is(err, ErrInvalidDataSchema):
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, ErrProductAlreadyExists):
 		return status.Error(codes.AlreadyExists, err.Error())
@@ -43,6 +47,7 @@ func ToGRPC(err error) error {
 		return status.Error(codes.FailedPrecondition, err.Error())
 	case errors.Is(err, ErrProductDoesNotFound):
 		return status.Error(codes.NotFound, err.Error())
+
 	default:
 		return status.Error(codes.Internal, err.Error())
 	}

@@ -148,3 +148,31 @@ func ConvertSliceOfProductsToListProductsResponse(products []FullProduct) *api.L
 		Products: pbProducts,
 	}
 }
+
+func ConvertGetProductRequestToProductID(recent *api.GetProductRequest) (*ProductId, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+
+	productId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+	return &ProductId{Id: productId}, nil
+}
+
+func ConvertFullProductToGetProductResponse(product *FullProduct) *api.GetProductResponse {
+	return &api.GetProductResponse{
+		Status: utils.StatusOK,
+		Product: &api.FullProduct{
+			Id: product.Id.String(),
+			Info: &api.ProductInfo{
+				RestaurantId: product.RestaurantId.String(),
+				Name:         product.Name,
+				Description:  product.Description,
+				Price:        product.Price,
+			},
+		},
+	}
+}

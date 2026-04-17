@@ -74,8 +74,17 @@ func (r *Restaurant) ListProducts(ctx context.Context, request *api.ListProducts
 	return models.ConvertSliceOfProductsToListProductsResponse(result), nil
 }
 
-func (r *Restaurant) GetProduct(context.Context, *api.GetProductRequest) (*api.GetProductResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+func (r *Restaurant) GetProduct(ctx context.Context, request *api.GetProductRequest) (*api.GetProductResponse, error) {
+	productId, err := models.ConvertGetProductRequestToProductID(request)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+	result, err := r.svc.GetProduct(ctx, productId)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+
+	return models.ConvertFullProductToGetProductResponse(result), err
 }
 
 func (r *Restaurant) ChangeOrderStatus(context.Context, *api.ChangeOrderStatusRequest) (*api.ChangeOrderStatusResponse, error) {

@@ -52,3 +52,12 @@ func (s *Restaurant) ListProducts(ctx context.Context, restaurantId *models.Rest
 
 	return result, err
 }
+
+func (s *Restaurant) GetProduct(ctx context.Context, productId *models.ProductId) (*models.FullProduct, error) {
+	result, err := s.repo.GetProduct(ctx, productId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
