@@ -18,3 +18,7 @@ type FullProduct struct {
 	Description  string    `json:"description"`
 	Price        int64     `json:"price"`
 }
+
+type ProductId struct {
+	Id uuid.UUID `json:"product_id"`
+}

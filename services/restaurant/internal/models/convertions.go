@@ -95,3 +95,22 @@ func ConvertUUIDTOUpdateProductResponse(uuid uuid.UUID) *api.UpdateProductRespon
 		Status: utils.StatusOK,
 	}
 }
+
+func ConvertDeleteProductRequestToUUID(recent *api.DeleteProductRequest) (*ProductId, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+
+	productId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+	return &ProductId{Id: productId}, nil
+}
+
+func ConvertStatusToDeleteProductResponse() *api.DeleteProductResponse {
+	return &api.DeleteProductResponse{
+		Status: utils.StatusOK,
+	}
+}

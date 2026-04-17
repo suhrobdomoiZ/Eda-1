@@ -20,6 +20,8 @@ var (
 	ErrProductIDRequired         = errors.New("product id is required")
 	ErrProductIdIsIncorrectValue = errors.New("product id is not a valid UUID")
 	ErrInvalidProductID          = errors.New("invalid product id")
+	ErrProductHasDependencies    = errors.New("product has dependencies")
+	ErrProductDoesNotFound       = errors.New("product does not exist")
 )
 
 func ToGRPC(err error) error {
@@ -37,6 +39,10 @@ func ToGRPC(err error) error {
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, ErrProductAlreadyExists):
 		return status.Error(codes.AlreadyExists, err.Error())
+	case errors.Is(err, ErrProductHasDependencies):
+		return status.Error(codes.FailedPrecondition, err.Error())
+	case errors.Is(err, ErrProductDoesNotFound):
+		return status.Error(codes.NotFound, err.Error())
 	default:
 		return status.Error(codes.Internal, err.Error())
 	}

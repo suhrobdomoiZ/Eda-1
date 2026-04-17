@@ -34,3 +34,12 @@ func (s *Restaurant) UpdateProduct(ctx context.Context, product *models.FullProd
 
 	return productId, nil
 }
+
+func (s *Restaurant) DeleteProduct(ctx context.Context, productId *models.ProductId) error {
+	err := s.repo.DeleteProductFromMenu(ctx, productId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

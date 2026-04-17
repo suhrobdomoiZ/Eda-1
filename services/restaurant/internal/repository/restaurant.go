@@ -46,7 +46,7 @@ func (r *Restaurant) AddProductIntoMenu(ctx context.Context, productInfo *models
 				return uuid.Nil, utils.ErrValidationFailed
 			}
 		}
-		return uuid.Nil, fmt.Errorf("add product: %w", err)
+		return uuid.Nil, fmt.Errorf("repository.DeleteProductFromMenu: %w", err)
 	}
 
 	return productId, nil
@@ -82,7 +82,37 @@ func (r *Restaurant) UpdateProductInMenu(ctx context.Context, product *models.Fu
 		case "23502":
 			return uuid.Nil, utils.ErrValidationFailed
 		}
+		return uuid.Nil, fmt.Errorf("repository.UpdateProductInMenu: %w", err)
 	}
 
 	return product.Id, nil
+}
+
+func (r *Restaurant) DeleteProductFromMenu(ctx context.Context, productId *models.ProductId) error {
+	query := `
+	DELETE FROM products
+	WHERE id = $1;
+	`
+
+	result, err := r.GetExecutor(ctx).Exec(
+		ctx,
+		query,
+		productId.Id,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "23503": // foreign_key_violation (есть заказы/ссылки на этот продукт)
+				return utils.ErrProductHasDependencies
+			}
+		}
+		return fmt.Errorf("repository.DeleteProductFromMenu: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return utils.ErrProductDoesNotFound
+	}
+
+	return nil
 }
