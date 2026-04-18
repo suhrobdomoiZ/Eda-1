@@ -195,3 +195,34 @@ func (r *Restaurant) GetProduct(ctx context.Context, productId *models.ProductId
 
 	return &product, nil
 }
+
+func (r *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderIdWithStatus) (uuid.UUID, error) {
+	query := `
+	UPDATE orders
+    SET status = $1
+	WHERE id = $2;
+	`
+
+	//TODO:через транзакцию, проверить, что статус у меняемого не cancelled и прошлый<предыдущи или cancelled
+	_, err := r.pool.Exec(ctx, query, order.Status, order.OrderId)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case pgerrcode.ForeignKeyViolation:
+				return uuid.Nil, utils.ErrInvalidOrderID
+			case pgerrcode.CheckViolation:
+				return uuid.Nil, utils.ErrValidationFailed
+			case pgerrcode.NotNullViolation:
+				return uuid.Nil, utils.ErrValidationFailed
+			case pgerrcode.UndefinedTable, pgerrcode.UndefinedColumn:
+				return uuid.Nil, utils.ErrInvalidDataSchema
+			case pgerrcode.ConnectionFailure, pgerrcode.CannotConnectNow:
+				return uuid.Nil, utils.ErrConnectionFailure
+			}
+		}
+		return uuid.Nil, fmt.Errorf("repository.ChangeOrderStatus: %w", err)
+	}
+
+	return order.OrderId, nil
+}

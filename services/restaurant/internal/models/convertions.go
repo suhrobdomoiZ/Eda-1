@@ -176,3 +176,22 @@ func ConvertFullProductToGetProductResponse(product *FullProduct) *api.GetProduc
 		},
 	}
 }
+
+func ConvertChangeOrderStatusRequestToOrderIDWithStatus(recent *api.ChangeOrderStatusRequest) (*OrderIdWithStatus, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+
+	orderId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+
+	rawStatus := recent.Status
+	if !IsValidOrderStatus(rawStatus) {
+		return nil, utils.ErrInvalidOrderStatus
+	}
+
+	return &OrderIdWithStatus{OrderId: orderId, Status: rawStatus}, nil
+}

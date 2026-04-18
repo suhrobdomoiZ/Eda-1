@@ -25,6 +25,12 @@ var (
 
 	ErrInvalidDataSchema = errors.New("invalid data schema")
 	ErrConnectionFailure = errors.New("connection failure")
+
+	ErrOrderIDRequired    = errors.New("order id is required")
+	ErrInvalidOrderID     = errors.New("invalid order id")
+	ErrOrderDoesNotFound  = errors.New("order does not exist")
+	ErrInvalidOrderStatus = errors.New("invalid order status")
+	ErrNotAllowed         = errors.New("not allowed to change status of delivering,delivered and cancelled order")
 )
 
 func ToGRPC(err error) error {
@@ -39,13 +45,19 @@ func ToGRPC(err error) error {
 		errors.Is(err, ErrInvalidRestaurantID),
 		errors.Is(err, ErrProductIdIsIncorrectValue),
 		errors.Is(err, ErrProductIDRequired),
-		errors.Is(err, ErrInvalidDataSchema):
+		errors.Is(err, ErrInvalidDataSchema),
+		errors.Is(err, ErrOrderIDRequired),
+		errors.Is(err, ErrInvalidOrderStatus),
+		errors.Is(err, ErrInvalidOrderID):
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, ErrProductAlreadyExists):
 		return status.Error(codes.AlreadyExists, err.Error())
 	case errors.Is(err, ErrProductHasDependencies):
 		return status.Error(codes.FailedPrecondition, err.Error())
-	case errors.Is(err, ErrProductDoesNotFound):
+	case errors.Is(err, ErrNotAllowed):
+		return status.Error(codes.PermissionDenied, err.Error())
+	case errors.Is(err, ErrProductDoesNotFound),
+		errors.Is(err, ErrOrderDoesNotFound):
 		return status.Error(codes.NotFound, err.Error())
 
 	default:

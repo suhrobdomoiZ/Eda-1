@@ -4,16 +4,18 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/repository"
 )
 
 type Restaurant struct {
-	repo repository.IRestaurant
+	repo     repository.IRestaurant
+	producer *kafka.Producer
 }
 
-func NewRestaurant(repository repository.IRestaurant) *Restaurant {
-	return &Restaurant{repo: repository}
+func NewRestaurant(repository repository.IRestaurant, producer *kafka.Producer) *Restaurant {
+	return &Restaurant{repo: repository, producer: producer}
 }
 
 func (s *Restaurant) AddProduct(ctx context.Context, productInfo *models.ProductInfo) (uuid.UUID, error) {
@@ -60,4 +62,18 @@ func (s *Restaurant) GetProduct(ctx context.Context, productId *models.ProductId
 	}
 
 	return result, nil
+}
+
+func (s *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderIdWithStatus) (*models.ChangedOrderId, error) {
+
+	resultId, err := s.repo.ChangeOrderStatus(ctx, order)
+	if err != nil {
+		return nil, err
+	}
+	err = s.producer.Send(ctx, order.OrderId.String(), order.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ChangedOrderId{OrderId: resultId}, nil
 }
