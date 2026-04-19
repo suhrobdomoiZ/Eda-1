@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	pb "github.com/suhrobdomoiZ/Eda-1/services/auth/internal/api/gen"
+	pb "github.com/suhrobdomoiZ/Eda-1/services/api"
 	service "github.com/suhrobdomoiZ/Eda-1/services/auth/internal/services"
 )
 
