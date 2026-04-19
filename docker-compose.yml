@@ -39,7 +39,7 @@ services:
       KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS}
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
       KAFKA_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
@@ -97,7 +97,6 @@ services:
       dockerfile: services/courier/Dockerfile
     env_file:
       - .env
-      - services/courier/.env
     environment:
       - KAFKA_CONSUMER_GROUP=courier-service
     depends_on:
@@ -114,7 +113,6 @@ services:
       dockerfile: services/customer/Dockerfile
     env_file:
       - .env
-      - services/customer/.env
     environment:
       - KAFKA_CONSUMER_GROUP=customer-service
     depends_on:
@@ -131,7 +129,6 @@ services:
       dockerfile: services/restaurant/Dockerfile
     env_file:
      - .env
-     - services/restaurant/.env
     environment:
       - KAFKA_CONSUMER_GROUP=restaurant-service
     depends_on:
