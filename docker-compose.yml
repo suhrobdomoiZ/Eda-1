@@ -103,7 +103,6 @@ services:
       dockerfile: services/courier/Dockerfile
     env_file:
       - .env
-      - services/courier/.env
     environment:
       - KAFKA_CONSUMER_GROUP=courier-service
     depends_on:
@@ -120,7 +119,6 @@ services:
       dockerfile: services/customer/Dockerfile
     env_file:
       - .env
-      - services/customer/.env
     environment:
       - KAFKA_CONSUMER_GROUP=customer-service
     depends_on:
@@ -136,8 +134,7 @@ services:
       context: .
       dockerfile: services/restaurant/Dockerfile
     env_file:
-      - .env
-      - services/restaurant/.env
+     - .env
     environment:
       - KAFKA_CONSUMER_GROUP=restaurant-service
     depends_on:
