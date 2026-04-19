@@ -2,17 +2,20 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/closer"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/config"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
-	"github.com/suhrobdomoiZ/Eda-1/services/api"
+	pb "github.com/suhrobdomoiZ/Eda-1/services/api"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/repository"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
@@ -40,26 +43,36 @@ func main() {
 		Level: slog.LevelInfo,
 	}))
 
+	clsr := closer.New(*logger)
+
 	dbDSN := buildDSN()
 	pool, err := pgxpool.New(ctx, dbDSN)
 	if err != nil {
 		logger.Error("restaurant service: failed to create pool", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
 
 	if err := pool.Ping(ctx); err != nil {
 		logger.Error("restaurant service: db ping failed", "error", err)
 		os.Exit(1)
 	}
 
+	clsr.AddFunc("pool", pool.Close)
+
 	logger.Info("restaurant service: connected to db", "host", config.Key("DATABASE_HOST").Get(""))
 
 	kafkaCfg := kafka.Load()
 	producer := kafka.NewProducer(*kafkaCfg)
-	defer producer.Close()
+
+	clsr.AddFunc("kafka producer", func() {
+		_ = producer.Close()
+	})
 
 	consumer := kafka.NewConsumer(*kafkaCfg, logger)
+
+	clsr.AddFunc("kafka consumer", func() {
+		_ = consumer.Close()
+	})
 
 	repo := repository.NewRestaurant(pool)
 	svc := service.NewRestaurant(repo, producer)
@@ -71,27 +84,55 @@ func main() {
 		logger.Error("restaurant service: failed to listen", "port", grpcPort, "error", err)
 		os.Exit(1)
 	}
+	clsr.AddFunc("grpc listener", func() {
+		_ = lis.Close()
+	})
 
 	grpcServer := grpc.NewServer()
-	api.RegisterRestaurantServer(grpcServer, grpcHandler)
+	pb.RegisterRestaurantServer(grpcServer, grpcHandler)
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	clsr.Add("grpc server", func(ctx context.Context) error {
+		done := make(chan struct{})
 
+		go func() {
+			grpcServer.GracefulStop()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			return nil
+		case <-ctx.Done():
+			grpcServer.Stop()
+			<-done
+			return ctx.Err()
+		}
+	})
+
+	errCh := make(chan error, 1)
 	go func() {
-		logger.Info("restaurant service: ready to serve", "port", grpcPort)
-		if err := grpcServer.Serve(lis); err != nil {
-			logger.Error("gRPC server error", "error", err)
+		if err := grpcServer.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			errCh <- fmt.Errorf("server.Run: %v", err)
 		}
 	}()
 
-	<-stop
-	logger.Info("shutdown signal received")
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	grpcServer.GracefulStop()
-	if err := consumer.Close(); err != nil {
-		logger.Error("failed to close kafka consumer", "error", err)
+	select {
+	case err := <-errCh:
+		logger.Error("restaurant service: error occurred", "error", err)
+		os.Exit(1)
+	case sig := <-sigCh:
+		logger.Info("restaurant service: received signal", "signal", sig.String())
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := clsr.Close(shutdownCtx); err != nil && errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("restaurant service: graceful shutdown", "error", err)
+		}
 	}
 
-	logger.Info("server stopped gracefully")
+	logger.Info("server stopped")
+	os.Exit(0)
 }
