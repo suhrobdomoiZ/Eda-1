@@ -2,6 +2,7 @@ package models
 
 import (
 	"github.com/google/uuid"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	"github.com/suhrobdomoiZ/Eda-1/services/api"
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
 )
@@ -194,4 +195,103 @@ func ConvertChangeOrderStatusRequestToOrderIDWithStatus(recent *api.ChangeOrderS
 	}
 
 	return &OrderIdWithStatus{OrderId: orderId, Status: rawStatus}, nil
+}
+
+func ConvertCommonOrderStatusToDBStatus(recent common.OrderStatus) (DBOrderStatus, error) {
+	switch recent {
+	case common.OrderStatus_ORDER_STATUS_CREATED:
+		return "created", nil
+	case common.OrderStatus_ORDER_STATUS_COOKING:
+		return "cooking", nil
+	case common.OrderStatus_ORDER_STATUS_READY:
+		return "ready", nil
+	case common.OrderStatus_ORDER_STATUS_DELIVERING:
+		return "delivering", nil
+	case common.OrderStatus_ORDER_STATUS_DELIVERED:
+		return "delivered", nil
+	case common.OrderStatus_ORDER_STATUS_CANCELED:
+		return "cancelled", nil
+	default:
+		return "", utils.ErrInvalidOrderStatus
+	}
+}
+
+func ConvertDBStatusToCommonOrderStatus(s string) common.OrderStatus {
+	switch s {
+	case "cooking":
+		return common.OrderStatus_ORDER_STATUS_COOKING
+	case "ready":
+		return common.OrderStatus_ORDER_STATUS_READY
+	case "delivering":
+		return common.OrderStatus_ORDER_STATUS_DELIVERING
+	case "delivered":
+		return common.OrderStatus_ORDER_STATUS_DELIVERED
+	case "cancelled":
+		return common.OrderStatus_ORDER_STATUS_CANCELED
+	default:
+		return common.OrderStatus_ORDER_STATUS_CREATED
+	}
+}
+
+func ConvertChangedOrderIdToChangeOrderStatusResponse(changedOrderId *ChangedOrderId) *api.ChangeOrderStatusResponse {
+	return &api.ChangeOrderStatusResponse{
+		Id:     changedOrderId.OrderId.String(),
+		Status: utils.StatusOK,
+	}
+}
+
+func ConvertListOrdersRequestToRestaurantId(recent *api.ListOrdersRequest) (*RestaurantId, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrRestaurantIDRequired
+	}
+	restaurantId, err := uuid.Parse(stringId)
+
+	if err != nil {
+		return nil, utils.ErrRestaurantIdIsIncorrectValue
+	}
+
+	return &RestaurantId{Id: restaurantId}, nil
+}
+
+func ConvertOrderedProductToCommonOrderedItem(orderedProduct OrderedProduct) *common.OrderItem {
+	return &common.OrderItem{
+		ProductId: orderedProduct.ProductId.String(),
+		Quantity:  orderedProduct.Quantity,
+		Price:     orderedProduct.Price,
+		Name:      orderedProduct.Name,
+	}
+}
+
+func ConvertOrderToCommonOrder(order *Order) *common.Order {
+
+	var orderItems []*common.OrderItem
+
+	for _, item := range order.OrderedItems {
+		orderItems = append(orderItems, ConvertOrderedProductToCommonOrderedItem(item))
+	}
+
+	return &common.Order{
+		Id:           order.Id.String(),
+		RestaurantId: order.RestaurantId.String(),
+		CourierId:    order.CourierId.String(),
+		ClientId:     order.ClientId.String(),
+		TotalPrice:   order.TotalPrice,
+		Status:       order.OrderStatus,
+		Address:      order.Address,
+		Items:        orderItems,
+	}
+}
+
+func ConvertSliceOfOrdersToListOrdersResponse(array []Order) *api.ListOrdersResponse {
+	var orders []*common.Order
+
+	for _, order := range array {
+		orders = append(orders, ConvertOrderToCommonOrder(&order))
+	}
+
+	return &api.ListOrdersResponse{
+		Status: utils.StatusOK,
+		Orders: orders,
+	}
 }

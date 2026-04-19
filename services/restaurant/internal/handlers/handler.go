@@ -7,8 +7,6 @@ import (
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type Restaurant struct {
@@ -96,10 +94,20 @@ func (r *Restaurant) ChangeOrderStatus(ctx context.Context, request *api.ChangeO
 	if err != nil {
 		return nil, utils.ToGRPC(err)
 	}
-	
+
 	return models.ConvertChangedOrderIdToChangeOrderStatusResponse(result), nil
 }
 
-func (r *Restaurant) ListOrders(context.Context, *api.ListOrdersRequest) (*api.ListOrdersResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+func (r *Restaurant) ListOrders(ctx context.Context, request *api.ListOrdersRequest) (*api.ListOrdersResponse, error) {
+	restaurantId, err := models.ConvertListOrdersRequestToRestaurantId(request)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+
+	result, err := r.svc.ListOrders(ctx, restaurantId)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+
+	return models.ConvertSliceOfOrdersToListOrdersResponse(result), nil
 }

@@ -150,7 +150,11 @@ func (r *Restaurant) ListProducts(ctx context.Context, restaurantId *models.Rest
 
 	for rows.Next() {
 		var product models.FullProduct
-		if err := rows.Scan(&product.Id, &product.RestaurantId, &product.Name, &product.Description, &product.Price); err != nil {
+		if err := rows.Scan(
+			&product.Id, &product.RestaurantId,
+			&product.Name, &product.Description,
+			&product.Price,
+		); err != nil {
 			return nil, fmt.Errorf("list products scan: %w", err)
 		}
 		products = append(products, product)
@@ -202,9 +206,13 @@ func (r *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderI
     SET status = $1
 	WHERE id = $2;
 	`
+	dbStatus, err := models.ConvertCommonOrderStatusToDBStatus(order.Status)
+	if err != nil {
+		return uuid.Nil, err
+	}
 
 	//TODO:через транзакцию, проверить, что статус у меняемого не cancelled и прошлый<предыдущи или cancelled
-	_, err := r.pool.Exec(ctx, query, order.Status, order.OrderId)
+	_, err = r.pool.Exec(ctx, query, dbStatus, order.OrderId)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -225,4 +233,95 @@ func (r *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderI
 	}
 
 	return order.OrderId, nil
+}
+
+func (r *Restaurant) ListOrders(ctx context.Context, restaurantId *models.RestaurantId) ([]models.Order, error) {
+	query := `
+	SELECT
+    o.id AS order_id,
+    o.client_id,
+    o.courier_id,
+    o.address,
+    o.status,
+    op.id AS ordered_product_id,
+    op.count,
+    p.id AS product_id,
+    p.name AS product_name,
+    p.price AS product_price,
+    op.order_id AS order_id_of_product
+	FROM ordered_products op
+    	INNER JOIN orders o ON op.order_id = o.id AND o.restaurant_id = $1
+    	INNER JOIN products p ON op.product_id = p.id
+	ORDER BY op.id;
+	`
+
+	rows, err := r.pool.Query(ctx, query, restaurantId.Id)
+	if err != nil {
+		return nil, fmt.Errorf("repository.ListOrders query: %w", err)
+	}
+
+	defer rows.Close()
+	ordersMap := make(map[uuid.UUID]*models.Order)
+
+	for rows.Next() {
+		var (
+			orderID     uuid.UUID
+			clientID    uuid.UUID
+			courierID   *uuid.UUID
+			address     string
+			statusStr   string
+			prodID      uuid.UUID
+			prodQty     int32
+			prodName    string
+			prodPrice   int64
+			prodOrderID uuid.UUID
+		)
+
+		if err := rows.Scan(
+			&orderID, &clientID, &courierID, &address, &statusStr,
+			&prodID, &prodQty, &prodName, &prodPrice, &prodOrderID,
+		); err != nil {
+			return nil, fmt.Errorf("repository.ListOrders scan: %w", err)
+		}
+
+		order, exists := ordersMap[orderID]
+		if !exists {
+			order = &models.Order{
+				Id:           orderID,
+				RestaurantId: restaurantId.Id,
+				ClientId:     clientID,
+				Address:      address,
+				OrderStatus:  models.ConvertDBStatusToCommonOrderStatus(statusStr),
+				OrderedItems: []models.OrderedProduct{},
+			}
+			if courierID != nil {
+				order.CourierId = *courierID
+			}
+			ordersMap[orderID] = order
+		}
+
+		order.OrderedItems = append(order.OrderedItems, models.OrderedProduct{
+			ProductId: prodID,
+			Name:      prodName,
+			OrderId:   prodOrderID,
+			Price:     prodPrice,
+			Quantity:  prodQty,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("repository.ListRows iteration: %w", err)
+	}
+
+	orders := make([]models.Order, 0, len(ordersMap))
+	for _, o := range ordersMap {
+		var total int64
+		for _, item := range o.OrderedItems {
+			total += item.Price * int64(item.Quantity)
+		}
+		o.TotalPrice = total
+		orders = append(orders, *o)
+	}
+
+	return orders, nil
 }

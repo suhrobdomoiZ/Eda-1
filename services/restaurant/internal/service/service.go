@@ -77,3 +77,12 @@ func (s *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderI
 
 	return &models.ChangedOrderId{OrderId: resultId}, nil
 }
+
+func (s *Restaurant) ListOrders(ctx context.Context, restaurantId *models.RestaurantId) ([]models.Order, error) {
+	result, err := s.repo.ListOrders(ctx, restaurantId)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, err
+}

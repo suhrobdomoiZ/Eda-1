@@ -3,9 +3,9 @@ package models
 import (
 	"github.com/google/uuid"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	"github.com/suhrobdomoiZ/Eda-1/services/api"
-	"github.com/suhrobdomoiZ/Eda-1/services/utils"
 )
+
+type DBOrderStatus string
 
 type OrderIdWithStatus struct {
 	OrderId uuid.UUID          `json:"order_id"`
@@ -31,21 +31,24 @@ type ChangeOrderStatusEvent struct {
 	NewStatus common.OrderStatus `json:"new_order_status"`
 }
 
-func NewChangeOrderStatusEvent(orderWithStatus *OrderIdWithStatus) *ChangeOrderStatusEvent {
-	return &ChangeOrderStatusEvent{
-		OrderId:   orderWithStatus.OrderId,
-		NewStatus: orderWithStatus.Status,
-	}
-}
-
 type ChangedOrderId struct {
 	OrderId uuid.UUID `json:"order_id"`
 }
 
-func ConvertChangedOrderIdToChangeOrderStatusResponse(changedOrderId *ChangedOrderId) *api.ChangeOrderStatusResponse{
-	return &api.ChangeOrderStatusResponse{
-		Id: changedOrderId.OrderId.String(),
-		Status: utils.StatusOK,
-
-	}
+type OrderedProduct struct {
+	ProductId uuid.UUID `json:"product_id"`
+	Name      string    `json:"product_name"`
+	OrderId   uuid.UUID `json:"order_id"`
+	Price     int64     `json:"price"`
+	Quantity  int32     `json:"quantity"`
+}
+type Order struct {
+	Id           uuid.UUID          `json:"order_id"`
+	RestaurantId uuid.UUID          `json:"restaurant_id"`
+	CourierId    uuid.UUID          `json:"courier_id"`
+	ClientId     uuid.UUID          `json:"client_id"`
+	Address      string             `json:"address"`
+	OrderedItems []OrderedProduct   `json:"ordered_items"`
+	TotalPrice   int64              `json:"total_price"`
+	OrderStatus  common.OrderStatus `json:"order_status"`
 }

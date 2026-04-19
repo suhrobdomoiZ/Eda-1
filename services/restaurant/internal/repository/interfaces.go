@@ -30,4 +30,5 @@ type IRestaurant interface {
 	ListProducts(ctx context.Context, restaurantId *models.RestaurantId) ([]models.FullProduct, error)
 	GetProduct(ctx context.Context, productId *models.ProductId) (*models.FullProduct, error)
 	ChangeOrderStatus(ctx context.Context, order *models.OrderIdWithStatus) (uuid.UUID, error)
+	ListOrders(ctx context.Context, restaurantId *models.RestaurantId) ([]models.Order, error)
 }
