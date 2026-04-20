@@ -69,7 +69,7 @@ func main() {
 	})
 
 	repo := repository.NewRestaurant(pool)
-	svc := service.NewRestaurant(repo, producer)
+	svc := service.NewRestaurant(repo, producer, logger)
 	grpcHandler := handlers.NewRestaurant(svc)
 
 	consumer := kafka.NewConsumer(*kafkaCfg, logger)
