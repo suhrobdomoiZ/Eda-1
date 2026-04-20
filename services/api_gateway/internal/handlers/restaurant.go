@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	rpb "github.com/suhrobdomoiZ/Eda-1/services/api"
+	rpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
 

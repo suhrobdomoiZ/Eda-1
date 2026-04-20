@@ -4,14 +4,12 @@ PROTO_COMMON_PATH=$(PB_DIR)/common.proto
 PROTO_CUSTOMER_PATH=$(PB_DIR)/customer.proto
 PROTO_COURIER_PATH=$(PB_DIR)/courier.proto
 PROTO_RESTAURANT_PATH=$(PB_DIR)/restaurant.proto
-
-CUSTOMER_PATH=./services/customer/cmd/main.go
-COURIER_PATH=./services/courier/cmd/main.go
-RESTAURANT_PATH=./services/restaurant/cmd/main.go
+PROTO_AUTH_PATH=$(PB_DIR)/auth.proto
 
 all: proto
 
-proto: generate-common generate-customer generate-courier generate-restaurant
+proto: generate-common generate-customer generate-courier generate-restaurant \
+	generate-auth
 	@echo "All proto generated"
 
 generate-common:
@@ -49,3 +47,12 @@ generate-restaurant:
 		--go_opt=module=github.com/suhrobdomoiZ/Eda-1 \
 		--go-grpc_opt=module=github.com/suhrobdomoiZ/Eda-1 \
 		$(PROTO_RESTAURANT_PATH)
+
+generate-auth:
+	@echo "Generating auth.pb.go"
+	protoc -I $(PB_DIR) \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		--go-grpc_opt=module=github.com/suhrobdomoiZ/Eda-1 \
+		$(PROTO_AUTH_PATH)

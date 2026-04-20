@@ -6,8 +6,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	authpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/auth"
 	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	authpb "github.com/suhrobdomoiZ/Eda-1/services/api"
 )
 
 type contextKey string

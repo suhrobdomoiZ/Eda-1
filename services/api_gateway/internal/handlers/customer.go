@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	cpb "github.com/suhrobdomoiZ/Eda-1/services/api"
+	cpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 )
 
 type CustomerHandler struct {
