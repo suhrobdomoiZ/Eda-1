@@ -26,11 +26,6 @@ func IsValidOrderStatus(s common.OrderStatus) bool {
 	}
 }
 
-type ChangeOrderStatusEvent struct {
-	OrderId   uuid.UUID          `json:"order_id"`
-	NewStatus common.OrderStatus `json:"new_order_status"`
-}
-
 type ChangedOrderId struct {
 	OrderId uuid.UUID `json:"order_id"`
 }
