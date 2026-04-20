@@ -1,1 +1,4 @@
-.env
+*.env
+.idea/
+.vscode/
+.cache/

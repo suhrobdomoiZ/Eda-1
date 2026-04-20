@@ -1,0 +1,53 @@
+version: "2"
+
+linters:
+  default: all
+  disable:
+    - wsl
+    - depguard
+    - wrapcheck
+    - ireturn
+    - exhaustruct
+  settings:
+    godox:
+      keywords:
+        - FIXME
+        - BUG
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: exported
+          arguments:
+            - "check-private-receivers"
+            - "say-repetitive-instead-of-stutters"
+            - "disable-checks-on-constants"
+            - "disable-checks-on-functions"
+            - "disable-checks-on-methods"
+            - "disable-checks-on-types"
+            - "disable-checks-on-variables"
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+    - swaggo
+  settings:
+    gofumpt:
+      module-path: github.com/suhrobdomoiZ/Eda-1
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
+
+run:
+  allow-parallel-runners: true

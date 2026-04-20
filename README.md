@@ -1,7 +1,7 @@
 # Сущности
 ## Users
 - id UUID
-- role VARCHAR(32) ("user", "admin", "restaurant", "deliver")
+- role VARCHAR(32) ("user", "admin", "restaurant", 'courier')
 - username
 - password
 ## Product
@@ -18,13 +18,10 @@
 - address
 - status:**("created", "made by restaurant", "delivered", "cancelled")**
 ## Ordered_products
-- id UUID
-- order_id
+- order_id PRIMARY KEY
 - item_id
 - count
-## Menu
-- restaurant_id
-- product_id
+
 
 # Микросервисы
 
