@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/suhrobdomoiZ/Eda-1/services/api"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
@@ -11,14 +11,14 @@ import (
 
 type Restaurant struct {
 	svc *service.Restaurant
-	api.UnimplementedRestaurantServer
+	pb.UnimplementedRestaurantServer
 }
 
 func NewRestaurant(restaurant *service.Restaurant) *Restaurant {
 	return &Restaurant{svc: restaurant}
 }
 
-func (r *Restaurant) AddProduct(ctx context.Context, request *api.AddProductRequest) (*api.AddProductResponse, error) {
+func (r *Restaurant) AddProduct(ctx context.Context, request *pb.AddProductRequest) (*pb.AddProductResponse, error) {
 	productInfo, err := models.ConvertAddProductRequestToProductInfo(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)
@@ -32,7 +32,7 @@ func (r *Restaurant) AddProduct(ctx context.Context, request *api.AddProductRequ
 	return models.ConvertUUIDToAddProductResponse(result), nil
 }
 
-func (r *Restaurant) UpdateProduct(ctx context.Context, request *api.UpdateProductRequest) (*api.UpdateProductResponse, error) {
+func (r *Restaurant) UpdateProduct(ctx context.Context, request *pb.UpdateProductRequest) (*pb.UpdateProductResponse, error) {
 	product, err := models.ConvertUpdateProductRequestToFullProduct(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)
@@ -44,7 +44,7 @@ func (r *Restaurant) UpdateProduct(ctx context.Context, request *api.UpdateProdu
 	return models.ConvertUUIDTOUpdateProductResponse(result), nil
 }
 
-func (r *Restaurant) DeleteProduct(ctx context.Context, request *api.DeleteProductRequest) (*api.DeleteProductResponse, error) {
+func (r *Restaurant) DeleteProduct(ctx context.Context, request *pb.DeleteProductRequest) (*pb.DeleteProductResponse, error) {
 	productId, err := models.ConvertDeleteProductRequestToUUID(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)
@@ -58,7 +58,7 @@ func (r *Restaurant) DeleteProduct(ctx context.Context, request *api.DeleteProdu
 	return models.ConvertStatusToDeleteProductResponse(), nil
 }
 
-func (r *Restaurant) ListProducts(ctx context.Context, request *api.ListProductsRequest) (*api.ListProductsResponse, error) {
+func (r *Restaurant) ListProducts(ctx context.Context, request *pb.ListProductsRequest) (*pb.ListProductsResponse, error) {
 	restaurantId, err := models.ConvertListProductsRequestToRestaurantId(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)
@@ -72,7 +72,7 @@ func (r *Restaurant) ListProducts(ctx context.Context, request *api.ListProducts
 	return models.ConvertSliceOfProductsToListProductsResponse(result), nil
 }
 
-func (r *Restaurant) GetProduct(ctx context.Context, request *api.GetProductRequest) (*api.GetProductResponse, error) {
+func (r *Restaurant) GetProduct(ctx context.Context, request *pb.GetProductRequest) (*pb.GetProductResponse, error) {
 	productId, err := models.ConvertGetProductRequestToProductID(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)
@@ -85,7 +85,7 @@ func (r *Restaurant) GetProduct(ctx context.Context, request *api.GetProductRequ
 	return models.ConvertFullProductToGetProductResponse(result), err
 }
 
-func (r *Restaurant) ChangeOrderStatus(ctx context.Context, request *api.ChangeOrderStatusRequest) (*api.ChangeOrderStatusResponse, error) {
+func (r *Restaurant) ChangeOrderStatus(ctx context.Context, request *pb.ChangeOrderStatusRequest) (*pb.ChangeOrderStatusResponse, error) {
 	order, err := models.ConvertChangeOrderStatusRequestToOrderIDWithStatus(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)
@@ -98,7 +98,7 @@ func (r *Restaurant) ChangeOrderStatus(ctx context.Context, request *api.ChangeO
 	return models.ConvertChangedOrderIdToChangeOrderStatusResponse(result), nil
 }
 
-func (r *Restaurant) ListOrders(ctx context.Context, request *api.ListOrdersRequest) (*api.ListOrdersResponse, error) {
+func (r *Restaurant) ListOrders(ctx context.Context, request *pb.ListOrdersRequest) (*pb.ListOrdersResponse, error) {
 	restaurantId, err := models.ConvertListOrdersRequestToRestaurantId(request)
 	if err != nil {
 		return nil, utils.ToGRPC(err)

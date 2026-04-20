@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/closer"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/config"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
-	pb "github.com/suhrobdomoiZ/Eda-1/services/api"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/repository"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
@@ -35,6 +35,7 @@ func buildDSN() string {
 	)
 }
 
+// TODO:удалить статус
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

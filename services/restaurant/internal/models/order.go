@@ -19,7 +19,7 @@ func IsValidOrderStatus(s common.OrderStatus) bool {
 		common.OrderStatus_ORDER_STATUS_READY,
 		common.OrderStatus_ORDER_STATUS_DELIVERING,
 		common.OrderStatus_ORDER_STATUS_DELIVERED,
-		common.OrderStatus_ORDER_STATUS_CANCELED:
+		common.OrderStatus_ORDER_STATUS_CANCELLED:
 		return true
 	default:
 		return false
