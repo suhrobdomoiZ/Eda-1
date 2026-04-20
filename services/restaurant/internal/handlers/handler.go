@@ -10,7 +10,7 @@ import (
 )
 
 type Restaurant struct {
-	svc service.Restaurant
+	svc *service.Restaurant
 	api.UnimplementedRestaurantServer
 }
 
