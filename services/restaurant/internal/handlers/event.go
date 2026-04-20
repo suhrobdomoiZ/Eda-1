@@ -37,6 +37,8 @@ func NewOrderConsumerHandler(svc *service.Restaurant, logger *slog.Logger) func(
 			}
 
 			logger.Info("Order is ready to be delivered", "order_id", evt.OrderId)
+		case common.OrderStatus_ORDER_STATUS_CANCELLED: //TODO:cancel logic
+			logger.Info("Order is cancelled", "order_id", evt.OrderId)
 		}
 		return nil
 	}

@@ -3,11 +3,11 @@ package models
 import (
 	"github.com/google/uuid"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	"github.com/suhrobdomoiZ/Eda-1/services/api"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
 )
 
-func ConvertAddProductRequestToProductInfo(recent *api.AddProductRequest) (*ProductInfo, error) {
+func ConvertAddProductRequestToProductInfo(recent *pb.AddProductRequest) (*ProductInfo, error) {
 	stringId := recent.ProductInfo.RestaurantId
 	if stringId == "" {
 		return nil, utils.ErrRestaurantIDRequired
@@ -40,14 +40,14 @@ func ConvertAddProductRequestToProductInfo(recent *api.AddProductRequest) (*Prod
 	}, nil
 }
 
-func ConvertUUIDToAddProductResponse(uuid uuid.UUID) *api.AddProductResponse {
-	return &api.AddProductResponse{
+func ConvertUUIDToAddProductResponse(uuid uuid.UUID) *pb.AddProductResponse {
+	return &pb.AddProductResponse{
 		Id:     uuid.String(),
 		Status: utils.StatusOK,
 	}
 }
 
-func ConvertUpdateProductRequestToFullProduct(recent *api.UpdateProductRequest) (*FullProduct, error) {
+func ConvertUpdateProductRequestToFullProduct(recent *pb.UpdateProductRequest) (*FullProduct, error) {
 	stringProductId := recent.Id
 	if stringProductId == "" {
 		return nil, utils.ErrProductIDRequired
@@ -90,14 +90,14 @@ func ConvertUpdateProductRequestToFullProduct(recent *api.UpdateProductRequest) 
 	}, nil
 }
 
-func ConvertUUIDTOUpdateProductResponse(uuid uuid.UUID) *api.UpdateProductResponse {
-	return &api.UpdateProductResponse{
+func ConvertUUIDTOUpdateProductResponse(uuid uuid.UUID) *pb.UpdateProductResponse {
+	return &pb.UpdateProductResponse{
 		Id:     uuid.String(),
 		Status: utils.StatusOK,
 	}
 }
 
-func ConvertDeleteProductRequestToUUID(recent *api.DeleteProductRequest) (*ProductId, error) {
+func ConvertDeleteProductRequestToUUID(recent *pb.DeleteProductRequest) (*ProductId, error) {
 	stringId := recent.Id
 	if stringId == "" {
 		return nil, utils.ErrProductIDRequired
@@ -110,13 +110,13 @@ func ConvertDeleteProductRequestToUUID(recent *api.DeleteProductRequest) (*Produ
 	return &ProductId{Id: productId}, nil
 }
 
-func ConvertStatusToDeleteProductResponse() *api.DeleteProductResponse {
-	return &api.DeleteProductResponse{
+func ConvertStatusToDeleteProductResponse() *pb.DeleteProductResponse {
+	return &pb.DeleteProductResponse{
 		Status: utils.StatusOK,
 	}
 }
 
-func ConvertListProductsRequestToRestaurantId(recent *api.ListProductsRequest) (*RestaurantId, error) {
+func ConvertListProductsRequestToRestaurantId(recent *pb.ListProductsRequest) (*RestaurantId, error) {
 	stringRestaurantId := recent.RestaurantId
 	if stringRestaurantId == "" {
 		return nil, utils.ErrRestaurantIDRequired
@@ -130,12 +130,12 @@ func ConvertListProductsRequestToRestaurantId(recent *api.ListProductsRequest) (
 	return &RestaurantId{Id: restaurantId}, nil
 }
 
-func ConvertSliceOfProductsToListProductsResponse(products []FullProduct) *api.ListProductsResponse {
-	pbProducts := make([]*api.FullProduct, len(products))
+func ConvertSliceOfProductsToListProductsResponse(products []FullProduct) *pb.ListProductsResponse {
+	pbProducts := make([]*pb.FullProduct, len(products))
 	for i, p := range products {
-		pbProducts[i] = &api.FullProduct{
+		pbProducts[i] = &pb.FullProduct{
 			Id: p.Id.String(),
-			Info: &api.ProductInfo{
+			Info: &pb.ProductInfo{
 				RestaurantId: p.RestaurantId.String(),
 				Name:         p.Name,
 				Description:  p.Description,
@@ -144,13 +144,13 @@ func ConvertSliceOfProductsToListProductsResponse(products []FullProduct) *api.L
 		}
 	}
 
-	return &api.ListProductsResponse{
+	return &pb.ListProductsResponse{
 		Status:   utils.StatusOK,
 		Products: pbProducts,
 	}
 }
 
-func ConvertGetProductRequestToProductID(recent *api.GetProductRequest) (*ProductId, error) {
+func ConvertGetProductRequestToProductID(recent *pb.GetProductRequest) (*ProductId, error) {
 	stringId := recent.Id
 	if stringId == "" {
 		return nil, utils.ErrProductIDRequired
@@ -163,12 +163,12 @@ func ConvertGetProductRequestToProductID(recent *api.GetProductRequest) (*Produc
 	return &ProductId{Id: productId}, nil
 }
 
-func ConvertFullProductToGetProductResponse(product *FullProduct) *api.GetProductResponse {
-	return &api.GetProductResponse{
+func ConvertFullProductToGetProductResponse(product *FullProduct) *pb.GetProductResponse {
+	return &pb.GetProductResponse{
 		Status: utils.StatusOK,
-		Product: &api.FullProduct{
+		Product: &pb.FullProduct{
 			Id: product.Id.String(),
-			Info: &api.ProductInfo{
+			Info: &pb.ProductInfo{
 				RestaurantId: product.RestaurantId.String(),
 				Name:         product.Name,
 				Description:  product.Description,
@@ -178,7 +178,7 @@ func ConvertFullProductToGetProductResponse(product *FullProduct) *api.GetProduc
 	}
 }
 
-func ConvertChangeOrderStatusRequestToOrderIDWithStatus(recent *api.ChangeOrderStatusRequest) (*OrderIdWithStatus, error) {
+func ConvertChangeOrderStatusRequestToOrderIDWithStatus(recent *pb.ChangeOrderStatusRequest) (*OrderIdWithStatus, error) {
 	stringId := recent.Id
 	if stringId == "" {
 		return nil, utils.ErrProductIDRequired
@@ -209,7 +209,7 @@ func ConvertCommonOrderStatusToDBStatus(recent common.OrderStatus) (DBOrderStatu
 		return "delivering", nil
 	case common.OrderStatus_ORDER_STATUS_DELIVERED:
 		return "delivered", nil
-	case common.OrderStatus_ORDER_STATUS_CANCELED:
+	case common.OrderStatus_ORDER_STATUS_CANCELLED:
 		return "cancelled", nil
 	default:
 		return "", utils.ErrInvalidOrderStatus
@@ -227,20 +227,20 @@ func ConvertDBStatusToCommonOrderStatus(s string) common.OrderStatus {
 	case "delivered":
 		return common.OrderStatus_ORDER_STATUS_DELIVERED
 	case "cancelled":
-		return common.OrderStatus_ORDER_STATUS_CANCELED
+		return common.OrderStatus_ORDER_STATUS_CANCELLED
 	default:
 		return common.OrderStatus_ORDER_STATUS_CREATED
 	}
 }
 
-func ConvertChangedOrderIdToChangeOrderStatusResponse(changedOrderId *ChangedOrderId) *api.ChangeOrderStatusResponse {
-	return &api.ChangeOrderStatusResponse{
+func ConvertChangedOrderIdToChangeOrderStatusResponse(changedOrderId *ChangedOrderId) *pb.ChangeOrderStatusResponse {
+	return &pb.ChangeOrderStatusResponse{
 		Id:     changedOrderId.OrderId.String(),
 		Status: utils.StatusOK,
 	}
 }
 
-func ConvertListOrdersRequestToRestaurantId(recent *api.ListOrdersRequest) (*RestaurantId, error) {
+func ConvertListOrdersRequestToRestaurantId(recent *pb.ListOrdersRequest) (*RestaurantId, error) {
 	stringId := recent.Id
 	if stringId == "" {
 		return nil, utils.ErrRestaurantIDRequired
@@ -283,14 +283,14 @@ func ConvertOrderToCommonOrder(order *Order) *common.Order {
 	}
 }
 
-func ConvertSliceOfOrdersToListOrdersResponse(array []Order) *api.ListOrdersResponse {
+func ConvertSliceOfOrdersToListOrdersResponse(array []Order) *pb.ListOrdersResponse {
 	var orders []*common.Order
 
 	for _, order := range array {
 		orders = append(orders, ConvertOrderToCommonOrder(&order))
 	}
 
-	return &api.ListOrdersResponse{
+	return &pb.ListOrdersResponse{
 		Status: utils.StatusOK,
 		Orders: orders,
 	}
