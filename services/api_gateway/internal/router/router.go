@@ -5,8 +5,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
+	authpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/auth"
 	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	authpb "github.com/suhrobdomoiZ/Eda-1/services/api"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
