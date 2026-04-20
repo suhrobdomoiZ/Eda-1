@@ -14,7 +14,7 @@ type Restaurant struct {
 	api.UnimplementedRestaurantServer
 }
 
-func NewRestaurant(restaurant service.Restaurant) *Restaurant {
+func NewRestaurant(restaurant *service.Restaurant) *Restaurant {
 	return &Restaurant{svc: restaurant}
 }
 

@@ -68,15 +68,23 @@ func main() {
 		_ = producer.Close()
 	})
 
+	repo := repository.NewRestaurant(pool)
+	svc := service.NewRestaurant(repo, producer)
+	grpcHandler := handlers.NewRestaurant(svc)
+
 	consumer := kafka.NewConsumer(*kafkaCfg, logger)
+
+	go func() {
+		consumerHandler := handlers.NewOrderConsumerHandler(svc, logger)
+		err = consumer.Start(ctx, consumerHandler)
+		if err := consumer.Start(ctx, consumerHandler); err != nil {
+			logger.Error("kafka consumer stopped unexpectedly", "error", err)
+		}
+	}()
 
 	clsr.AddFunc("kafka consumer", func() {
 		_ = consumer.Close()
 	})
-
-	repo := repository.NewRestaurant(pool)
-	svc := service.NewRestaurant(repo, producer)
-	grpcHandler := handlers.NewRestaurant(*svc)
 
 	grpcPort := config.Key("RESTAURANT_GRPC_PORT").MustGet()
 	lis, err := net.Listen("tcp", ":"+grpcPort)
