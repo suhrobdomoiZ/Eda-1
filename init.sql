@@ -33,7 +33,7 @@ CREATE TABLE products
     restaurant_id UUID          REFERENCES users (id) ON DELETE CASCADE,
     name          VARCHAR(128)  NOT NULL CHECK (name != ''),
     description   VARCHAR(1024),
-    price         NUMERIC(8, 2) NOT NULL CHECK (price > 0)
+    price         INTEGER NOT NULL CHECK (price > 0)
 );
 
 -- Заказы

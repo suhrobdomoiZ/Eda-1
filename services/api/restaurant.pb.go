@@ -882,7 +882,7 @@ const file_restaurant_proto_rawDesc = "" +
 	"GetProduct\x12\x15.pb.GetProductRequest\x1a\x16.pb.GetProductResponse\x12P\n" +
 	"\x11ChangeOrderStatus\x12\x1c.pb.ChangeOrderStatusRequest\x1a\x1d.pb.ChangeOrderStatusResponse\x12;\n" +
 	"\n" +
-	"ListOrders\x12\x15.pb.ListOrdersRequest\x1a\x16.pb.ListOrdersResponseB@Z>github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/apib\x06proto3"
+	"ListOrders\x12\x15.pb.ListOrdersRequest\x1a\x16.pb.ListOrdersResponseB,Z*github.com/suhrobdomoiZ/Eda-1/services/apib\x06proto3"
 
 var (
 	file_restaurant_proto_rawDescOnce sync.Once
