@@ -11,7 +11,8 @@ enum OrderStatus {
   ORDER_STATUS_READY = 2;                   // Готов
   ORDER_STATUS_DELIVERING = 3;              // В процессе доставки
   ORDER_STATUS_DELIVERED = 4;               // Отдан заказчику
-  ORDER_STATUS_CANCELED = 5;                // Отменен
+  ORDER_STATUS_CANCELLED = 5;                // Отменен
+  ORDER_STATUS_UNKNOWN = 6;
 }
 
 // Позиция в заказе

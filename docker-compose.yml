@@ -105,6 +105,8 @@ services:
       - .env
     environment:
       - KAFKA_CONSUMER_GROUP=courier-service
+    ports:
+      - "9006:9006"
     depends_on:
       kafka:
         condition: service_healthy
@@ -121,6 +123,8 @@ services:
       - .env
     environment:
       - KAFKA_CONSUMER_GROUP=customer-service
+    ports:
+      - "9002:9002"
     depends_on:
       kafka:
         condition: service_healthy

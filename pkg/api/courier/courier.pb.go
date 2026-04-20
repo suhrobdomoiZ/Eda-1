@@ -4,7 +4,7 @@
 // 	protoc        v6.33.5
 // source: courier.proto
 
-package api
+package courier
 
 import (
 	common "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
@@ -523,13 +523,14 @@ const file_courier_proto_rawDesc = "" +
 	"\x14DeliverOrderResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12+\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x13.common.OrderStatusR\x06status\x12\x1a\n" +
-	"\bearnings\x18\x03 \x01(\x03R\bearnings2\x95\x03\n" +
-	"\tClientAPI\x12]\n" +
+	"\bearnings\x18\x03 \x01(\x03R\bearnings2\x96\x03\n" +
+	"\n" +
+	"CourierAPI\x12]\n" +
 	"\x12GetAvailableOrders\x12\".courier.GetAvailableOrdersRequest\x1a#.courier.GetAvailableOrdersResponse\x12H\n" +
 	"\vAcceptOrder\x12\x1b.courier.AcceptOrderRequest\x1a\x1c.courier.AcceptOrderResponse\x12H\n" +
 	"\vGetMyOrders\x12\x1b.courier.GetMyOrdersRequest\x1a\x1c.courier.GetMyOrdersResponse\x12H\n" +
 	"\vPickUpOrder\x12\x1b.courier.PickUpOrderRequest\x1a\x1c.courier.PickUpOrderResponse\x12K\n" +
-	"\fDeliverOrder\x12\x1c.courier.DeliverOrderRequest\x1a\x1d.courier.DeliverOrderResponseB=Z;github.com/suhrobdomoiZ/Eda-1/services/courier/internal/apib\x06proto3"
+	"\fDeliverOrder\x12\x1c.courier.DeliverOrderRequest\x1a\x1d.courier.DeliverOrderResponseB/Z-github.com/suhrobdomoiZ/Eda-1/pkg/api/courierb\x06proto3"
 
 var (
 	file_courier_proto_rawDescOnce sync.Once
@@ -564,16 +565,16 @@ var file_courier_proto_depIdxs = []int32{
 	10, // 2: courier.GetMyOrdersResponse.orders:type_name -> common.Order
 	11, // 3: courier.PickUpOrderResponse.status:type_name -> common.OrderStatus
 	11, // 4: courier.DeliverOrderResponse.status:type_name -> common.OrderStatus
-	0,  // 5: courier.ClientAPI.GetAvailableOrders:input_type -> courier.GetAvailableOrdersRequest
-	2,  // 6: courier.ClientAPI.AcceptOrder:input_type -> courier.AcceptOrderRequest
-	4,  // 7: courier.ClientAPI.GetMyOrders:input_type -> courier.GetMyOrdersRequest
-	6,  // 8: courier.ClientAPI.PickUpOrder:input_type -> courier.PickUpOrderRequest
-	8,  // 9: courier.ClientAPI.DeliverOrder:input_type -> courier.DeliverOrderRequest
-	1,  // 10: courier.ClientAPI.GetAvailableOrders:output_type -> courier.GetAvailableOrdersResponse
-	3,  // 11: courier.ClientAPI.AcceptOrder:output_type -> courier.AcceptOrderResponse
-	5,  // 12: courier.ClientAPI.GetMyOrders:output_type -> courier.GetMyOrdersResponse
-	7,  // 13: courier.ClientAPI.PickUpOrder:output_type -> courier.PickUpOrderResponse
-	9,  // 14: courier.ClientAPI.DeliverOrder:output_type -> courier.DeliverOrderResponse
+	0,  // 5: courier.CourierAPI.GetAvailableOrders:input_type -> courier.GetAvailableOrdersRequest
+	2,  // 6: courier.CourierAPI.AcceptOrder:input_type -> courier.AcceptOrderRequest
+	4,  // 7: courier.CourierAPI.GetMyOrders:input_type -> courier.GetMyOrdersRequest
+	6,  // 8: courier.CourierAPI.PickUpOrder:input_type -> courier.PickUpOrderRequest
+	8,  // 9: courier.CourierAPI.DeliverOrder:input_type -> courier.DeliverOrderRequest
+	1,  // 10: courier.CourierAPI.GetAvailableOrders:output_type -> courier.GetAvailableOrdersResponse
+	3,  // 11: courier.CourierAPI.AcceptOrder:output_type -> courier.AcceptOrderResponse
+	5,  // 12: courier.CourierAPI.GetMyOrders:output_type -> courier.GetMyOrdersResponse
+	7,  // 13: courier.CourierAPI.PickUpOrder:output_type -> courier.PickUpOrderResponse
+	9,  // 14: courier.CourierAPI.DeliverOrder:output_type -> courier.DeliverOrderResponse
 	10, // [10:15] is the sub-list for method output_type
 	5,  // [5:10] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name

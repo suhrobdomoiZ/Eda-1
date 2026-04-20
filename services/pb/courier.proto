@@ -3,10 +3,10 @@ syntax = "proto3";
 package courier;
 import "common.proto";
 
-option go_package = "github.com/suhrobdomoiZ/Eda-1/services/api";//TODO:исправить пути, теперь все генерится в эту папку
+option go_package = "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier";
 
-// API заказчика
-service ClientAPI {
+// API курьера
+service CourierAPI {
   rpc GetAvailableOrders(GetAvailableOrdersRequest) returns (GetAvailableOrdersResponse);
   rpc AcceptOrder(AcceptOrderRequest) returns (AcceptOrderResponse);
   rpc GetMyOrders(GetMyOrdersRequest) returns (GetMyOrdersResponse);
