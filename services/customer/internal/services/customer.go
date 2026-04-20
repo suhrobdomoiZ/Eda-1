@@ -8,8 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	common "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
-	pb "github.com/suhrobdomoiZ/Eda-1/services/customer/internal/api"
+	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
+	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/repository"
 )
 
@@ -111,7 +112,7 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 // Получение заказа
 
 type GetOrderResult struct {
-	Order *common.Order
+	Order *common_api.Order
 }
 
 func (s *CustomerService) GetOrder(ctx context.Context, userID, orderID string) (*GetOrderResult, error) {
@@ -133,18 +134,18 @@ func (s *CustomerService) GetOrder(ctx context.Context, userID, orderID string) 
 	}
 
 	// Преобразуем в protobuf
-	pbOrder := &common.Order{
+	pbOrder := &common_api.Order{
 		Id:           orderWithItems.Order.ID,
 		RestaurantId: orderWithItems.Order.RestaurantID,
 		CourierId:    orderWithItems.Order.CourierID.String,
 		ClientId:     orderWithItems.Order.UserID,
 		Address:      orderWithItems.Order.Address,
 		TotalPrice:   orderWithItems.Order.TotalPrice,
-		Status:       s.MapStatus(orderWithItems.Order.Status),
+		Status:       common_methods.MapOrderStatus(orderWithItems.Order.Status),
 	}
 
 	for _, item := range orderWithItems.Items {
-		pbOrder.Items = append(pbOrder.Items, &common.OrderItem{
+		pbOrder.Items = append(pbOrder.Items, &common_api.OrderItem{
 			ProductId: item.ProductID,
 			Name:      item.Name,
 			Quantity:  item.Quantity,
@@ -238,7 +239,7 @@ func (s *CustomerService) ListMyOrders(ctx context.Context, userID string, limit
 	for _, o := range orders {
 		pbOrders = append(pbOrders, &pb.OrderInfo{
 			Id:         o.ID,
-			Status:     s.MapStatus(o.Status),
+			Status:     common_methods.MapOrderStatus(o.Status),
 			TotalPrice: o.TotalPrice,
 		})
 	}
@@ -280,48 +281,11 @@ func (s *CustomerService) GetRestaurantMenu(ctx context.Context, restaurantID st
 
 	return &GetRestaurantMenuResult{
 		RestaurantID:   restaurantID,
-		RestaurantName: s.getRestaurantName(ctx, restaurantID),
+		RestaurantName: common_methods.GetRestaurantName(ctx, restaurantID),
 		Items: []*pb.MenuItem{
 			{Id: "prod_1", Name: "Маргарита", Description: "Томаты, моцарелла, базилик", Price: 50000},
 			{Id: "prod_2", Name: "Пепперони", Description: "Пепперони, моцарелла, томатный соус", Price: 60000},
 			{Id: "prod_3", Name: "Кола", Description: "0.5л", Price: 10000},
 		},
 	}, nil
-}
-
-// Преобразование строкового статуса из БД в enum
-func (s *CustomerService) MapStatus(status string) common.OrderStatus {
-	switch status {
-	case "created":
-		return common.OrderStatus_ORDER_STATUS_CREATED
-	case "cooking":
-		return common.OrderStatus_ORDER_STATUS_COOKING
-	case "ready":
-		return common.OrderStatus_ORDER_STATUS_READY
-	case "delivering":
-		return common.OrderStatus_ORDER_STATUS_DELIVERING
-	case "delivered":
-		return common.OrderStatus_ORDER_STATUS_DELIVERED
-	case "cancelled":
-		return common.OrderStatus_ORDER_STATUS_CANCELED
-	default:
-		return common.OrderStatus_ORDER_STATUS_CREATED
-	}
-}
-
-// Вспомогательные методы
-
-// Получение названия ресторана
-func (s *CustomerService) getRestaurantName(ctx context.Context, restaurantID string) string {
-	// TODO: Вызвать gRPC метод сервиса ресторанов или взять из кэша
-	mockNames := map[string]string{
-		"rest_1": "Пицца Миа",
-		"rest_2": "Суши Мастер",
-		"rest_3": "Бургер Кинг",
-	}
-
-	if name, ok := mockNames[restaurantID]; ok {
-		return name
-	}
-	return "Ресторан"
 }

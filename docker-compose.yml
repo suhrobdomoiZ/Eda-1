@@ -97,9 +97,10 @@ services:
       dockerfile: services/courier/Dockerfile
     env_file:
       - .env
-      - services/courier/.env
     environment:
       - KAFKA_CONSUMER_GROUP=courier-service
+    ports:
+      - "9006:9006"
     depends_on:
       kafka:
         condition: service_healthy

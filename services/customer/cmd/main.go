@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	pb "github.com/suhrobdomoiZ/Eda-1/services/customer/internal/api"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/config"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/repository"

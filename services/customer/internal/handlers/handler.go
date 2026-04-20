@@ -6,7 +6,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/suhrobdomoiZ/Eda-1/services/customer/internal/api"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
+	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
 	service "github.com/suhrobdomoiZ/Eda-1/services/customer/internal/services"
 )
 
@@ -45,7 +46,7 @@ func (h *CustomerHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRe
 
 	return &pb.CreateOrderResponse{
 		OrderId: result.OrderID,
-		Status:  h.svc.MapStatus(result.Status),
+		Status:  common_methods.MapOrderStatus(result.Status),
 	}, nil
 }
 
