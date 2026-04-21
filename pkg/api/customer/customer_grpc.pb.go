@@ -19,12 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	CustomerAPI_CreateOrder_FullMethodName       = "/customer.CustomerAPI/CreateOrder"
-	CustomerAPI_GetOrder_FullMethodName          = "/customer.CustomerAPI/GetOrder"
-	CustomerAPI_CancelOrder_FullMethodName       = "/customer.CustomerAPI/CancelOrder"
-	CustomerAPI_ListMyOrders_FullMethodName      = "/customer.CustomerAPI/ListMyOrders"
-	CustomerAPI_GetRestaurantMenu_FullMethodName = "/customer.CustomerAPI/GetRestaurantMenu"
-	CustomerAPI_ListRestaurants_FullMethodName   = "/customer.CustomerAPI/ListRestaurants"
+	CustomerAPI_CreateOrder_FullMethodName  = "/customer.CustomerAPI/CreateOrder"
+	CustomerAPI_GetOrder_FullMethodName     = "/customer.CustomerAPI/GetOrder"
+	CustomerAPI_CancelOrder_FullMethodName  = "/customer.CustomerAPI/CancelOrder"
+	CustomerAPI_ListMyOrders_FullMethodName = "/customer.CustomerAPI/ListMyOrders"
 )
 
 // CustomerAPIClient is the client API for CustomerAPI service.
@@ -37,8 +35,6 @@ type CustomerAPIClient interface {
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderResponse, error)
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*CancelOrderResponse, error)
 	ListMyOrders(ctx context.Context, in *ListMyOrdersRequest, opts ...grpc.CallOption) (*ListMyOrdersResponse, error)
-	GetRestaurantMenu(ctx context.Context, in *GetRestaurantMenuRequest, opts ...grpc.CallOption) (*GetRestaurantMenuResponse, error)
-	ListRestaurants(ctx context.Context, in *ListRestaurantsRequest, opts ...grpc.CallOption) (*ListRestaurantsResponse, error)
 }
 
 type customerAPIClient struct {
@@ -89,26 +85,6 @@ func (c *customerAPIClient) ListMyOrders(ctx context.Context, in *ListMyOrdersRe
 	return out, nil
 }
 
-func (c *customerAPIClient) GetRestaurantMenu(ctx context.Context, in *GetRestaurantMenuRequest, opts ...grpc.CallOption) (*GetRestaurantMenuResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetRestaurantMenuResponse)
-	err := c.cc.Invoke(ctx, CustomerAPI_GetRestaurantMenu_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *customerAPIClient) ListRestaurants(ctx context.Context, in *ListRestaurantsRequest, opts ...grpc.CallOption) (*ListRestaurantsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListRestaurantsResponse)
-	err := c.cc.Invoke(ctx, CustomerAPI_ListRestaurants_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // CustomerAPIServer is the server API for CustomerAPI service.
 // All implementations must embed UnimplementedCustomerAPIServer
 // for forward compatibility.
@@ -119,8 +95,6 @@ type CustomerAPIServer interface {
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderResponse, error)
 	CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderResponse, error)
 	ListMyOrders(context.Context, *ListMyOrdersRequest) (*ListMyOrdersResponse, error)
-	GetRestaurantMenu(context.Context, *GetRestaurantMenuRequest) (*GetRestaurantMenuResponse, error)
-	ListRestaurants(context.Context, *ListRestaurantsRequest) (*ListRestaurantsResponse, error)
 	mustEmbedUnimplementedCustomerAPIServer()
 }
 
@@ -142,12 +116,6 @@ func (UnimplementedCustomerAPIServer) CancelOrder(context.Context, *CancelOrderR
 }
 func (UnimplementedCustomerAPIServer) ListMyOrders(context.Context, *ListMyOrdersRequest) (*ListMyOrdersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyOrders not implemented")
-}
-func (UnimplementedCustomerAPIServer) GetRestaurantMenu(context.Context, *GetRestaurantMenuRequest) (*GetRestaurantMenuResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetRestaurantMenu not implemented")
-}
-func (UnimplementedCustomerAPIServer) ListRestaurants(context.Context, *ListRestaurantsRequest) (*ListRestaurantsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListRestaurants not implemented")
 }
 func (UnimplementedCustomerAPIServer) mustEmbedUnimplementedCustomerAPIServer() {}
 func (UnimplementedCustomerAPIServer) testEmbeddedByValue()                     {}
@@ -242,42 +210,6 @@ func _CustomerAPI_ListMyOrders_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CustomerAPI_GetRestaurantMenu_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRestaurantMenuRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CustomerAPIServer).GetRestaurantMenu(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CustomerAPI_GetRestaurantMenu_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CustomerAPIServer).GetRestaurantMenu(ctx, req.(*GetRestaurantMenuRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _CustomerAPI_ListRestaurants_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListRestaurantsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(CustomerAPIServer).ListRestaurants(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: CustomerAPI_ListRestaurants_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CustomerAPIServer).ListRestaurants(ctx, req.(*ListRestaurantsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // CustomerAPI_ServiceDesc is the grpc.ServiceDesc for CustomerAPI service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -300,14 +232,6 @@ var CustomerAPI_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMyOrders",
 			Handler:    _CustomerAPI_ListMyOrders_Handler,
-		},
-		{
-			MethodName: "GetRestaurantMenu",
-			Handler:    _CustomerAPI_GetRestaurantMenu_Handler,
-		},
-		{
-			MethodName: "ListRestaurants",
-			Handler:    _CustomerAPI_ListRestaurants_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

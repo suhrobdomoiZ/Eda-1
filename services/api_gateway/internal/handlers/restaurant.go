@@ -118,3 +118,18 @@ func (h *RestaurantHandler) ChangeOrderStatus(c *fiber.Ctx) error {
 	}
 	return c.JSON(resp)
 }
+
+// GET /api/v1/restaurant/restaurants  [публичный]
+func (h *RestaurantHandler) ListRestaurants(c *fiber.Ctx) error {
+	limit := int32(c.QueryInt("limit", 20))
+	offset := int32(c.QueryInt("offset", 0))
+
+	resp, err := h.client.ListRestaurants(context.Background(), &rpb.ListRestaurantsRequest{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return grpcError(c, err)
+	}
+	return c.JSON(resp)
+}

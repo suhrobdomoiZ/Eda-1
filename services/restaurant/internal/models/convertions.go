@@ -295,3 +295,29 @@ func ConvertSliceOfOrdersToListOrdersResponse(array []Order) *pb.ListOrdersRespo
 		Orders: orders,
 	}
 }
+
+func ConvertListRestaurantsRequestToParams(req *pb.ListRestaurantsRequest) (limit, offset int32) {
+	limit = req.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset = req.Offset
+	return
+}
+
+func ConvertRestaurantsToResponse(restaurants []RestaurantInfo, total int32) *pb.ListRestaurantsResponse {
+	var pbRestaurants []*pb.RestaurantInfo
+	for _, r := range restaurants {
+		pbRestaurants = append(pbRestaurants, &pb.RestaurantInfo{
+			Id:   r.ID.String(),
+			Name: r.Name,
+		})
+	}
+	return &pb.ListRestaurantsResponse{
+		Restaurants: pbRestaurants,
+		Total:       total,
+	}
+}

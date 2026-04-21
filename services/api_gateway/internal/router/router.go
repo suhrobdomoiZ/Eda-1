@@ -46,6 +46,7 @@ func New(
 	// Public
 	rest.Get("/menu/:restaurant_id", restaurantHandler.ListProducts)
 	rest.Get("/menu/:restaurant_id/product/:id", restaurantHandler.GetProduct)
+	rest.Get("/restaurants", restaurantHandler.ListRestaurants)
 
 	// Only restaurant
 	rest.Post("/menu", authMW, restMW, restaurantHandler.AddProduct)
@@ -57,10 +58,6 @@ func New(
 	// Customer
 	cust := app.Group("/api/v1/customer")
 	custMW := middleware.RequireRole(commonpb.UserRole_USER_ROLE_CUSTOMER)
-
-	// Public
-	cust.Get("/restaurants", customerHandler.ListRestaurants)
-	cust.Get("/restaurants/:restaurant_id/menu", customerHandler.GetRestaurantMenu)
 
 	// Only client
 	cust.Post("/orders", authMW, custMW, customerHandler.CreateOrder)

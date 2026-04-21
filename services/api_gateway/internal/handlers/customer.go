@@ -16,29 +16,6 @@ func NewCustomerHandler(client cpb.CustomerAPIClient) *CustomerHandler {
 	return &CustomerHandler{client: client}
 }
 
-// GET /api/v1/customer/restaurants  [публичный]
-func (h *CustomerHandler) ListRestaurants(c *fiber.Ctx) error {
-	resp, err := h.client.ListRestaurants(context.Background(), &cpb.ListRestaurantsRequest{
-		Limit:  int32(c.QueryInt("limit", 20)),
-		Offset: int32(c.QueryInt("offset", 0)),
-	})
-	if err != nil {
-		return grpcError(c, err)
-	}
-	return c.JSON(resp)
-}
-
-// GET /api/v1/customer/restaurants/:restaurant_id/menu  [публичный]
-func (h *CustomerHandler) GetRestaurantMenu(c *fiber.Ctx) error {
-	resp, err := h.client.GetRestaurantMenu(context.Background(), &cpb.GetRestaurantMenuRequest{
-		RestaurantId: c.Params("restaurant_id"),
-	})
-	if err != nil {
-		return grpcError(c, err)
-	}
-	return c.JSON(resp)
-}
-
 // POST /api/v1/customer/orders  [JWT, role=customer]
 func (h *CustomerHandler) CreateOrder(c *fiber.Ctx) error {
 	var req cpb.CreateOrderRequest

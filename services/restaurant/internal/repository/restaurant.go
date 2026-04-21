@@ -325,3 +325,41 @@ func (r *Restaurant) ListOrders(ctx context.Context, restaurantId *models.Restau
 
 	return orders, nil
 }
+
+func (r *Restaurant) ListRestaurants(ctx context.Context, limit, offset int32) ([]models.RestaurantInfo, int32, error) {
+	// Получаем общее количество
+	var total int32
+	countQuery := `SELECT COUNT(*) FROM restaurants`
+
+	// pgx использует QueryRow без "Context" в названии
+	err := r.pool.QueryRow(ctx, countQuery).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count restaurants: %w", err)
+	}
+
+	// Получаем список
+	query := `
+		SELECT id, name, address, phone, cuisine, rating, is_open
+		FROM restaurants
+		ORDER BY name ASC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := r.pool.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query restaurants: %w", err)
+	}
+	defer rows.Close()
+
+	var restaurants []models.RestaurantInfo
+	for rows.Next() {
+		var r models.RestaurantInfo
+		var id string
+		if err := rows.Scan(&id, &r.Name, &r.Address, &r.Phone, &r.Cuisine, &r.Rating, &r.IsOpen); err != nil {
+			return nil, 0, fmt.Errorf("scan restaurant: %w", err)
+		}
+		r.ID = uuid.MustParse(id)
+		restaurants = append(restaurants, r)
+	}
+
+	return restaurants, total, nil
+}
