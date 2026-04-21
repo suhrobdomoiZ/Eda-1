@@ -7,10 +7,15 @@ import (
 
 type Config struct {
 	GRPC     GRPCConfig
+	Metrics  MetricsConfig
 	Postgres PostgresConfig
 }
 
 type GRPCConfig struct {
+	Port string
+}
+
+type MetricsConfig struct {
 	Port string
 }
 
@@ -33,6 +38,9 @@ func Load() *Config {
 	cfg := &Config{
 		GRPC: GRPCConfig{
 			Port: getEnv("COURIER_GRPC_PORT", "50051"),
+		},
+		Metrics: MetricsConfig{
+			Port: getEnv("COURIER_METRICS_PORT", "9096"),
 		},
 		Postgres: PostgresConfig{
 			Host:     getEnv("DATABASE_HOST", "localhost"),

@@ -8,9 +8,8 @@ import (
 
 	authpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/auth"
 	courpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
-	custompb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
-	respb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
-
+	custpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
+	restpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/config"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/router"
@@ -33,13 +32,13 @@ func main() {
 	if cfg.Services.RestaurantAddr != "" {
 		conn := mustDial(cfg.Services.RestaurantAddr)
 		defer conn.Close()
-		restaurantHandler = handlers.NewRestaurantHandler(respb.NewRestaurantClient(conn))
+		restaurantHandler = handlers.NewRestaurantHandler(restpb.NewRestaurantClient(conn))
 	}
 
 	if cfg.Services.CustomerAddr != "" {
 		conn := mustDial(cfg.Services.CustomerAddr)
 		defer conn.Close()
-		customerHandler = handlers.NewCustomerHandler(custompb.NewCustomerAPIClient(conn))
+		customerHandler = handlers.NewCustomerHandler(custpb.NewCustomerAPIClient(conn))
 	}
 
 	if cfg.Services.CourierAddr != "" {
