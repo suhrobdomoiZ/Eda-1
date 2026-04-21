@@ -14,11 +14,11 @@ const (
 	prefixUserTokens   = "user_tokens:" // user_tokens:USER_ID - set[TOKEN]
 )
 
-type RedisRepo struct {
+type RedisRepository struct {
 	client *redis.Client
 }
 
-func NewRedisRepo(addr, password string, db int) (*RedisRepo, error) {
+func NewRedisRepo(addr, password string, db int) (*RedisRepository, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -27,11 +27,11 @@ func NewRedisRepo(addr, password string, db int) (*RedisRepo, error) {
 	if err := client.Ping(context.Background()).Err(); err != nil {
 		return nil, fmt.Errorf("ping redis: %w", err)
 	}
-	return &RedisRepo{client: client}, nil
+	return &RedisRepository{client: client}, nil
 }
 
 // SaveRefreshToken сохраняет токен с привязкой к пользователю
-func (r *RedisRepo) SaveRefreshToken(ctx context.Context, userID, token string, ttl time.Duration) error {
+func (r *RedisRepository) SaveRefreshToken(ctx context.Context, userID, token string, ttl time.Duration) error {
 	pipe := r.client.Pipeline()
 	// token - userID (для валидации)
 	pipe.Set(ctx, prefixRefreshToken+token, userID, ttl)
@@ -46,7 +46,7 @@ func (r *RedisRepo) SaveRefreshToken(ctx context.Context, userID, token string, 
 }
 
 // GetUserIDByRefreshToken возвращает userID если токен валиден
-func (r *RedisRepo) GetUserIDByRefreshToken(ctx context.Context, token string) (string, error) {
+func (r *RedisRepository) GetUserIDByRefreshToken(ctx context.Context, token string) (string, error) {
 	userID, err := r.client.Get(ctx, prefixRefreshToken+token).Result()
 	if err == redis.Nil {
 		return "", ErrNotFound
@@ -58,7 +58,7 @@ func (r *RedisRepo) GetUserIDByRefreshToken(ctx context.Context, token string) (
 }
 
 // DeleteRefreshToken инвалидирует один конкретный токен (logout с одного устройства)
-func (r *RedisRepo) DeleteRefreshToken(ctx context.Context, userID, token string) error {
+func (r *RedisRepository) DeleteRefreshToken(ctx context.Context, userID, token string) error {
 	pipe := r.client.Pipeline()
 	pipe.Del(ctx, prefixRefreshToken+token)
 	pipe.SRem(ctx, prefixUserTokens+userID, token)
@@ -70,7 +70,7 @@ func (r *RedisRepo) DeleteRefreshToken(ctx context.Context, userID, token string
 }
 
 // DeleteAllUserTokens инвалидирует все токены пользователя (смена пароля и т.п.)
-func (r *RedisRepo) DeleteAllUserTokens(ctx context.Context, userID string) error {
+func (r *RedisRepository) DeleteAllUserTokens(ctx context.Context, userID string) error {
 	tokens, err := r.client.SMembers(ctx, prefixUserTokens+userID).Result()
 	if err != nil {
 		return fmt.Errorf("get user tokens: %w", err)

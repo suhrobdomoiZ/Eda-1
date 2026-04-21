@@ -1,4 +1,4 @@
-package service
+package services
 
 import (
 	"context"
@@ -18,14 +18,14 @@ var (
 )
 
 type AuthService struct {
-	pg  *repository.PostgresRepo
-	rdb *repository.RedisRepo
+	pg  repository.PgRepo
+	rdb repository.RedisRepo
 	jwt *JWTService
 }
 
 func NewAuthService(
-	pg *repository.PostgresRepo,
-	rdb *repository.RedisRepo,
+	pg repository.PgRepo,
+	rdb repository.RedisRepo,
 	jwt *JWTService,
 ) *AuthService {
 	return &AuthService{pg: pg, rdb: rdb, jwt: jwt}

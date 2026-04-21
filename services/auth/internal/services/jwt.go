@@ -1,4 +1,4 @@
-package service
+package services
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var ErrTokenInvalid = errors.New("token invalid")
@@ -14,6 +15,8 @@ var ErrTokenExpired = errors.New("token expired")
 type Claims struct {
 	UserID string `json:"user_id"`
 	Role   string `json:"role"`
+	JTI    string `json:"jti"`
+
 	jwt.RegisteredClaims
 }
 
@@ -47,22 +50,20 @@ func (j *JWTService) GenerateAccessToken(userID, role string) (string, error) {
 	}
 	return signed, nil
 }
-
-func (j *JWTService) GenerateRefreshToken(userID, role string) (string, error) {
-	claims := &Claims{
+func (s *JWTService) GenerateRefreshToken(userID, role string) (string, error) {
+	claims := Claims{
 		UserID: userID,
 		Role:   role,
+		JTI:    uuid.New().String(), // 🔥 КЛЮЧЕВОЕ
+
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.refreshTokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.refreshTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(j.secret)
-	if err != nil {
-		return "", fmt.Errorf("sign refresh token: %w", err)
-	}
-	return signed, nil
+	return token.SignedString([]byte(s.secret))
 }
 
 func (j *JWTService) ParseToken(tokenStr string) (*Claims, error) {
