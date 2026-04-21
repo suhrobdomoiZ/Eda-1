@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'customer'
+    static_configs:
+      - targets: ['customer:9095']
+    metrics_path: '/metrics'
+
+  - job_name: 'courier'
+    static_configs:
+      - targets: ['courier:9096']
+    metrics_path: '/metrics'
+
+  - job_name: 'restaurant'
+    static_configs:
+      - targets: ['restaurant:9094']
+    metrics_path: '/metrics'
+
+  - job_name: 'auth'
+    static_configs:
+      - targets: ['auth:9091']
+    metrics_path: '/metrics'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

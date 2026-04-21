@@ -10,6 +10,7 @@ import (
 	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/courier/internal/repository"
 )
 
@@ -24,12 +25,14 @@ var (
 
 type CourierService struct {
 	pb.UnimplementedCourierAPIServer
-	pgRepo *repository.PostgresRepo
+	pgRepo  *repository.PostgresRepo
+	metrics *metrics.Metrics
 }
 
-func NewCourierService(pgRepo *repository.PostgresRepo) *CourierService {
+func NewCourierService(pgRepo *repository.PostgresRepo, m *metrics.Metrics) *CourierService {
 	return &CourierService{
-		pgRepo: pgRepo,
+		pgRepo:  pgRepo,
+		metrics: m,
 	}
 }
 
@@ -215,6 +218,8 @@ func (s *CourierService) PickUpOrder(ctx context.Context, courierID, orderID str
 
 	// TODO: Отправить событие в Kafka — курьер забрал заказ
 
+	s.metrics.OnOrderPickUp()
+
 	return &PickUpOrderResult{
 		Success: true,
 		Status:  commonpb.OrderStatus_ORDER_STATUS_DELIVERING,
@@ -252,10 +257,14 @@ func (s *CourierService) DeliverOrder(ctx context.Context, courierID, orderID st
 		return nil, status.Errorf(codes.Internal, "update order status: %v", err)
 	}
 
+	s.metrics.OnOrderDelivered()
+
 	earnings := order.TotalPrice * 15 / 100
 
 	// TODO: Отправить событие в Kafka — заказ доставлен
 	// TODO: Начислить деньги курьеру
+
+	s.metrics.OnOrderDelivered()
 
 	return &DeliverOrderResult{
 		Success:  true,
