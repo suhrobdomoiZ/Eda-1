@@ -6,8 +6,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	authpb "github.com/suhrobdomoiZ/Eda-1/services/api"
-	svcpb "github.com/suhrobdomoiZ/Eda-1/services/api"
+	authpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/auth"
+	courpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
+	custompb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
+	respb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
+
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/config"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/router"
@@ -30,19 +33,19 @@ func main() {
 	if cfg.Services.RestaurantAddr != "" {
 		conn := mustDial(cfg.Services.RestaurantAddr)
 		defer conn.Close()
-		restaurantHandler = handlers.NewRestaurantHandler(svcpb.NewRestaurantClient(conn))
+		restaurantHandler = handlers.NewRestaurantHandler(respb.NewRestaurantClient(conn))
 	}
 
 	if cfg.Services.CustomerAddr != "" {
 		conn := mustDial(cfg.Services.CustomerAddr)
 		defer conn.Close()
-		customerHandler = handlers.NewCustomerHandler(svcpb.NewCustomerAPIClient(conn))
+		customerHandler = handlers.NewCustomerHandler(custompb.NewCustomerAPIClient(conn))
 	}
 
 	if cfg.Services.CourierAddr != "" {
 		conn := mustDial(cfg.Services.CourierAddr)
 		defer conn.Close()
-		courierHandler = handlers.NewCourierHandler(svcpb.NewClientAPIClient(conn))
+		courierHandler = handlers.NewCourierHandler(courpb.NewCourierAPIClient(conn))
 	}
 
 	app := router.New(authClient, restaurantHandler, customerHandler, courierHandler)

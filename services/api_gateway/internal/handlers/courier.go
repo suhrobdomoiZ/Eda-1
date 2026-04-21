@@ -5,15 +5,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	courierpb "github.com/suhrobdomoiZ/Eda-1/services/api"
+	courierpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
 	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
 
 type CourierHandler struct {
-	client courierpb.ClientAPIClient
+	client courierpb.CourierAPIClient
 }
 
-func NewCourierHandler(client courierpb.ClientAPIClient) *CourierHandler {
+func NewCourierHandler(client courierpb.CourierAPIClient) *CourierHandler {
 	return &CourierHandler{client: client}
 }
 
