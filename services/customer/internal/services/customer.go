@@ -11,6 +11,7 @@ import (
 	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/repository"
 )
@@ -24,14 +25,20 @@ var (
 
 type CustomerService struct {
 	pb.UnimplementedCustomerAPIServer
-	pgRepo  *repository.PostgresRepo
-	metrics *metrics.Metrics
+	pgRepo   *repository.PostgresRepo
+	producer *kafka.Producer
+	metrics  *metrics.Metrics
 }
 
-func NewCustomerService(pgRepo *repository.PostgresRepo, m *metrics.Metrics) *CustomerService {
+func NewCustomerService(
+	pgRepo *repository.PostgresRepo,
+	p *kafka.Producer,
+	m *metrics.Metrics,
+) *CustomerService {
 	return &CustomerService{
-		pgRepo:  pgRepo,
-		metrics: m,
+		pgRepo:   pgRepo,
+		producer: p,
+		metrics:  m,
 	}
 }
 
@@ -40,13 +47,8 @@ func NewCustomerService(pgRepo *repository.PostgresRepo, m *metrics.Metrics) *Cu
 type CreateOrderInput struct {
 	UserID       string
 	RestaurantID string
-	Items        []CreateOrderItemInput
+	Items        []*pb.CreateOrderItem
 	Address      string
-}
-
-type CreateOrderItemInput struct {
-	ProductID string
-	Quantity  int32
 }
 
 type CreateOrderResult struct {
@@ -65,31 +67,23 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 		return nil, status.Error(codes.InvalidArgument, "address is required")
 	}
 
-	// TODO: Получить цены и названия товаров из сервиса ресторанов
-
 	orderID := uuid.New().String()
-
-	// Считаем общую сумму и формируем позиции
 	var totalPrice int64
 	var orderItems []repository.OrderItem
 
 	for _, item := range input.Items {
-		// TODO: Получить реальную цену из меню ресторана
-		price := int64(50000) // В копейках
-
-		totalPrice += price * int64(item.Quantity)
+		totalPrice += item.Price * int64(item.Quantity)
 
 		orderItems = append(orderItems, repository.OrderItem{
 			ID:        uuid.New().String(),
 			OrderID:   orderID,
-			ProductID: item.ProductID,
-			Name:      "Блюдо", // TODO: Взять из меню
+			ProductID: item.ProductId,
+			Name:      item.Name,
 			Quantity:  item.Quantity,
-			Price:     price,
+			Price:     item.Price,
 		})
 	}
 
-	// Создаём заказ в БД
 	order := &repository.Order{
 		ID:           orderID,
 		UserID:       input.UserID,
@@ -100,12 +94,18 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 	}
 
 	if err := s.pgRepo.CreateOrder(ctx, order, orderItems); err != nil {
+		// TODO: error metric
 		return nil, status.Errorf(codes.Internal, "create order: %v", err)
 	}
 
-	s.metrics.OnOrderCreated(float64(totalPrice / 100))
+	// Kafka event
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_CREATED,
+	}
+	_ = s.producer.Send(ctx, orderID, event)
 
-	// TODO: Отправить событие в Kafka / уведомить ресторан
+	s.metrics.OnOrderCreated(float64(totalPrice / 100))
 
 	return &CreateOrderResult{
 		OrderID: orderID,
@@ -195,11 +195,18 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 		return nil, status.Errorf(codes.Internal, "cancel order: %v", err)
 	}
 
+	// kafka event
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_CANCELLED,
+	}
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		// TODO: error metric
+	}
+
 	s.metrics.OnOrderCancelled()
 
 	refundAmount := order.TotalPrice
-
-	// TODO: Уведомить ресторан об отмене
 
 	return &CancelOrderResult{
 		Success:      true,
@@ -208,7 +215,6 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 }
 
 func (s *CustomerService) canCancel(status string) bool {
-	// Можно отменить только если заказ ещё не начали готовить
 	cancellableStatuses := map[string]bool{
 		"created": true,
 		"cooking": true,
@@ -253,45 +259,5 @@ func (s *CustomerService) ListMyOrders(ctx context.Context, userID string, limit
 	return &ListMyOrdersResult{
 		Orders: pbOrders,
 		Total:  total,
-	}, nil
-}
-
-// Список ресторанов
-
-type ListRestaurantsResult struct {
-	Restaurants []*pb.RestaurantInfo
-}
-
-func (s *CustomerService) ListRestaurants(ctx context.Context, limit, offset int32) (*ListRestaurantsResult, error) {
-	// TODO: Вызвать gRPC метод сервиса ресторанов
-
-	return &ListRestaurantsResult{
-		Restaurants: []*pb.RestaurantInfo{
-			{Id: "rest_1", Name: "Пицца Миа"},
-			{Id: "rest_2", Name: "Суши Мастер"},
-			{Id: "rest_3", Name: "Бургер Кинг"},
-		},
-	}, nil
-}
-
-// Получение меню
-
-type GetRestaurantMenuResult struct {
-	RestaurantID   string
-	RestaurantName string
-	Items          []*pb.MenuItem
-}
-
-func (s *CustomerService) GetRestaurantMenu(ctx context.Context, restaurantID string) (*GetRestaurantMenuResult, error) {
-	// TODO: Вызвать gRPC метод сервиса ресторанов
-
-	return &GetRestaurantMenuResult{
-		RestaurantID:   restaurantID,
-		RestaurantName: common_methods.GetRestaurantName(ctx, restaurantID),
-		Items: []*pb.MenuItem{
-			{Id: "prod_1", Name: "Маргарита", Description: "Томаты, моцарелла, базилик", Price: 50000},
-			{Id: "prod_2", Name: "Пепперони", Description: "Пепперони, моцарелла, томатный соус", Price: 60000},
-			{Id: "prod_3", Name: "Кола", Description: "0.5л", Price: 10000},
-		},
 	}, nil
 }

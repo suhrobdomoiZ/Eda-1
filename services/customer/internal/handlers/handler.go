@@ -2,14 +2,36 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	service "github.com/suhrobdomoiZ/Eda-1/services/customer/internal/services"
 )
+
+func NewOrderConsumerHandler(svc *service.CustomerService) kafka.HandlerFunc {
+	return func(ctx context.Context, key string, value []byte) error {
+		var event kafka.ChangeOrderStatusEvent
+		if err := json.Unmarshal(value, &event); err != nil {
+			return fmt.Errorf("unmarshal event: %w", err)
+		}
+
+		switch event.NewStatus {
+		case common_api.OrderStatus_ORDER_STATUS_DELIVERED:
+			// Можно отправить push-уведомление клиенту
+		case common_api.OrderStatus_ORDER_STATUS_CANCELLED:
+			// TODO: уведомить клиента об отмене рестораном
+		}
+
+		return nil
+	}
+}
 
 type CustomerHandler struct {
 	pb.UnimplementedCustomerAPIServer
@@ -26,18 +48,10 @@ func (h *CustomerHandler) CreateOrder(ctx context.Context, req *pb.CreateOrderRe
 		return nil, status.Error(codes.Unauthenticated, "user_id not found in context")
 	}
 
-	items := make([]service.CreateOrderItemInput, len(req.Items))
-	for i, item := range req.Items {
-		items[i] = service.CreateOrderItemInput{
-			ProductID: item.ProductId,
-			Quantity:  item.Quantity,
-		}
-	}
-
 	result, err := h.svc.CreateOrder(ctx, &service.CreateOrderInput{
 		UserID:       userID,
 		RestaurantID: req.RestaurantId,
-		Items:        items,
+		Items:        req.Items,
 		Address:      req.Address,
 	})
 	if err != nil {
@@ -93,25 +107,4 @@ func (h *CustomerHandler) ListMyOrders(ctx context.Context, req *pb.ListMyOrders
 	}
 
 	return &pb.ListMyOrdersResponse{Orders: result.Orders}, nil
-}
-
-func (h *CustomerHandler) GetRestaurantMenu(ctx context.Context, req *pb.GetRestaurantMenuRequest) (*pb.GetRestaurantMenuResponse, error) {
-	result, err := h.svc.GetRestaurantMenu(ctx, req.RestaurantId)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.GetRestaurantMenuResponse{
-		RestaurantId:   result.RestaurantID,
-		RestaurantName: result.RestaurantName,
-	}, nil
-}
-
-func (h *CustomerHandler) ListRestaurants(ctx context.Context, req *pb.ListRestaurantsRequest) (*pb.ListRestaurantsResponse, error) {
-	result, err := h.svc.ListRestaurants(ctx, req.Limit, req.Offset)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.ListRestaurantsResponse{Restaurants: result.Restaurants}, nil
 }

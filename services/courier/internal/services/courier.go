@@ -7,9 +7,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
+	"github.com/google/uuid"
+	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/courier/internal/repository"
 )
@@ -25,20 +27,26 @@ var (
 
 type CourierService struct {
 	pb.UnimplementedCourierAPIServer
-	pgRepo  *repository.PostgresRepo
-	metrics *metrics.Metrics
+	pgRepo   *repository.PostgresRepo
+	producer *kafka.Producer
+	metrics  *metrics.Metrics
 }
 
-func NewCourierService(pgRepo *repository.PostgresRepo, m *metrics.Metrics) *CourierService {
+func NewCourierService(
+	pgRepo *repository.PostgresRepo,
+	p *kafka.Producer,
+	m *metrics.Metrics,
+) *CourierService {
 	return &CourierService{
-		pgRepo:  pgRepo,
-		metrics: m,
+		pgRepo:   pgRepo,
+		producer: p,
+		metrics:  m,
 	}
 }
 
 // Получение доступных заказов
 type GetAvailableOrdersResult struct {
-	Orders []*commonpb.Order
+	Orders []*common_api.Order
 }
 
 func (s *CourierService) GetAvailableOrders(ctx context.Context, courierID string, limit int32) (*GetAvailableOrdersResult, error) {
@@ -54,12 +62,12 @@ func (s *CourierService) GetAvailableOrders(ctx context.Context, courierID strin
 		return nil, status.Errorf(codes.Internal, "list available orders: %v", err)
 	}
 
-	var pbOrders []*commonpb.Order
+	var pbOrders []*common_api.Order
 	for _, o := range orders {
 		items, _ := s.pgRepo.GetOrderItems(ctx, o.ID)
-		var pbItems []*commonpb.OrderItem
+		var pbItems []*common_api.OrderItem
 		for _, item := range items {
-			pbItems = append(pbItems, &commonpb.OrderItem{
+			pbItems = append(pbItems, &common_api.OrderItem{
 				ProductId: item.ProductID,
 				Name:      item.Name,
 				Quantity:  item.Quantity,
@@ -67,7 +75,7 @@ func (s *CourierService) GetAvailableOrders(ctx context.Context, courierID strin
 			})
 		}
 
-		pbOrders = append(pbOrders, &commonpb.Order{
+		pbOrders = append(pbOrders, &common_api.Order{
 			Id:           o.ID,
 			RestaurantId: o.RestaurantID,
 			CourierId:    o.CourierID.String,
@@ -87,7 +95,7 @@ func (s *CourierService) GetAvailableOrders(ctx context.Context, courierID strin
 // Принять заказ
 type AcceptOrderResult struct {
 	Success bool
-	Order   *commonpb.Order
+	Order   *common_api.Order
 }
 
 func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID string) (*AcceptOrderResult, error) {
@@ -116,9 +124,9 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 	}
 
 	items, _ := s.pgRepo.GetOrderItems(ctx, orderID)
-	var pbItems []*commonpb.OrderItem
+	var pbItems []*common_api.OrderItem
 	for _, item := range items {
-		pbItems = append(pbItems, &commonpb.OrderItem{
+		pbItems = append(pbItems, &common_api.OrderItem{
 			ProductId: item.ProductID,
 			Name:      item.Name,
 			Quantity:  item.Quantity,
@@ -126,7 +134,7 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 		})
 	}
 
-	pbOrder := &commonpb.Order{
+	pbOrder := &common_api.Order{
 		Id:           order.ID,
 		RestaurantId: order.RestaurantID,
 		CourierId:    courierID,
@@ -134,10 +142,14 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 		Address:      order.Address,
 		Items:        pbItems,
 		TotalPrice:   order.TotalPrice,
-		Status:       commonpb.OrderStatus_ORDER_STATUS_DELIVERING,
+		Status:       common_api.OrderStatus_ORDER_STATUS_DELIVERING,
 	}
-
-	// TODO: Отправить событие в Kafka — курьер принял заказ
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId: uuid.MustParse(orderID),
+	}
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		// TODO: error metric
+	}
 
 	return &AcceptOrderResult{
 		Success: true,
@@ -147,7 +159,7 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 
 // Все заказы курьера
 type GetMyOrdersResult struct {
-	Orders []*commonpb.Order
+	Orders []*common_api.Order
 }
 
 func (s *CourierService) GetMyOrders(ctx context.Context, courierID string) (*GetMyOrdersResult, error) {
@@ -156,12 +168,12 @@ func (s *CourierService) GetMyOrders(ctx context.Context, courierID string) (*Ge
 		return nil, status.Errorf(codes.Internal, "list courier orders: %v", err)
 	}
 
-	var pbOrders []*commonpb.Order
+	var pbOrders []*common_api.Order
 	for _, o := range orders {
 		items, _ := s.pgRepo.GetOrderItems(ctx, o.ID)
-		var pbItems []*commonpb.OrderItem
+		var pbItems []*common_api.OrderItem
 		for _, item := range items {
-			pbItems = append(pbItems, &commonpb.OrderItem{
+			pbItems = append(pbItems, &common_api.OrderItem{
 				ProductId: item.ProductID,
 				Name:      item.Name,
 				Quantity:  item.Quantity,
@@ -169,7 +181,7 @@ func (s *CourierService) GetMyOrders(ctx context.Context, courierID string) (*Ge
 			})
 		}
 
-		pbOrders = append(pbOrders, &commonpb.Order{
+		pbOrders = append(pbOrders, &common_api.Order{
 			Id:           o.ID,
 			RestaurantId: o.RestaurantID,
 			CourierId:    o.CourierID.String,
@@ -189,7 +201,7 @@ func (s *CourierService) GetMyOrders(ctx context.Context, courierID string) (*Ge
 // Забрать заказ
 type PickUpOrderResult struct {
 	Success bool
-	Status  commonpb.OrderStatus
+	Status  common_api.OrderStatus
 }
 
 func (s *CourierService) PickUpOrder(ctx context.Context, courierID, orderID string) (*PickUpOrderResult, error) {
@@ -216,20 +228,26 @@ func (s *CourierService) PickUpOrder(ctx context.Context, courierID, orderID str
 		return nil, status.Errorf(codes.Internal, "update order status: %v", err)
 	}
 
-	// TODO: Отправить событие в Kafka — курьер забрал заказ
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERING,
+	}
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		// TODO: error metric
+	}
 
 	s.metrics.OnOrderPickUp()
 
 	return &PickUpOrderResult{
 		Success: true,
-		Status:  commonpb.OrderStatus_ORDER_STATUS_DELIVERING,
+		Status:  common_api.OrderStatus_ORDER_STATUS_DELIVERING,
 	}, nil
 }
 
 // Сдать заказ
 type DeliverOrderResult struct {
 	Success  bool
-	Status   commonpb.OrderStatus
+	Status   common_api.OrderStatus
 	Earnings int64
 }
 
@@ -261,14 +279,21 @@ func (s *CourierService) DeliverOrder(ctx context.Context, courierID, orderID st
 
 	earnings := order.TotalPrice * 15 / 100
 
-	// TODO: Отправить событие в Kafka — заказ доставлен
 	// TODO: Начислить деньги курьеру
+
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERED,
+	}
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		// TODO: error metric
+	}
 
 	s.metrics.OnOrderDelivered()
 
 	return &DeliverOrderResult{
 		Success:  true,
-		Status:   commonpb.OrderStatus_ORDER_STATUS_DELIVERED,
+		Status:   common_api.OrderStatus_ORDER_STATUS_DELIVERED,
 		Earnings: earnings,
 	}, nil
 }

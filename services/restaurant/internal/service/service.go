@@ -106,3 +106,14 @@ func (s *Restaurant) ListOrders(ctx context.Context, restaurantId *models.Restau
 
 	return result, err
 }
+
+func (s *Restaurant) ListRestaurants(ctx context.Context, limit, offset int32) ([]models.RestaurantInfo, int32, error) {
+	restaurants, total, err := s.repo.ListRestaurants(ctx, limit, offset)
+	if err != nil {
+		s.logger.Error("ListRestaurants failed", "error", err)
+		return nil, 0, err
+	}
+
+	s.logger.Info("ListRestaurants successfully done")
+	return restaurants, total, nil
+}

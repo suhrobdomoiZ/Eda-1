@@ -111,3 +111,14 @@ func (r *Restaurant) ListOrders(ctx context.Context, request *pb.ListOrdersReque
 
 	return models.ConvertSliceOfOrdersToListOrdersResponse(result), nil
 }
+
+func (r *Restaurant) ListRestaurants(ctx context.Context, request *pb.ListRestaurantsRequest) (*pb.ListRestaurantsResponse, error) {
+	limit, offset := models.ConvertListRestaurantsRequestToParams(request)
+
+	restaurants, total, err := r.svc.ListRestaurants(ctx, limit, offset)
+	if err != nil {
+		return nil, utils.ToGRPC(err)
+	}
+
+	return models.ConvertRestaurantsToResponse(restaurants, total), nil
+}

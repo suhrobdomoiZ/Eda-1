@@ -53,8 +53,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    ports:
-      - "9092:9092"
     networks:
       - backend
 
@@ -72,8 +70,6 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: eda-prometheus
-    ports:
-      - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     volumes:
       - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
@@ -111,6 +107,8 @@ services:
     build:
       context: .
       dockerfile: services/api_gateway/Dockerfile
+    ports:
+      - "${GATEWAY_HTTP_PORT}:${GATEWAY_HTTP_PORT}"
     env_file: .env
     depends_on:
       database:
@@ -127,9 +125,6 @@ services:
       context: .
       dockerfile: services/auth/Dockerfile
     env_file: .env
-    ports:
-      - "${AUTH_GRPC_PORT}:${AUTH_GRPC_PORT}"
-      - "${AUTH_METRICS_PORT}:${AUTH_METRICS_PORT}"
     depends_on:
       database:
         condition: service_healthy
@@ -146,9 +141,6 @@ services:
       - .env
     environment:
       - KAFKA_CONSUMER_GROUP=courier-service
-    ports:
-      - "${COURIER_GRPC_PORT}:${COURIER_GRPC_PORT}"
-      - "${COURIER_METRICS_PORT}:${COURIER_METRICS_PORT}"
     depends_on:
       kafka:
         condition: service_healthy
@@ -165,9 +157,6 @@ services:
       - .env
     environment:
       - KAFKA_CONSUMER_GROUP=customer-service
-    ports:
-      - "${CUSTOMER_GRPC_PORT}:${CUSTOMER_GRPC_PORT}"
-      - "${CUSTOMER_METRICS_PORT}:${CUSTOMER_METRICS_PORT}"
     depends_on:
       kafka:
         condition: service_healthy
@@ -184,9 +173,6 @@ services:
      - .env
     environment:
       - KAFKA_CONSUMER_GROUP=restaurant-service
-    ports:
-      - "${RESTAURANT_GRPC_PORT}:${RESTAURANT_GRPC_PORT}"
-      - "${RESTAURANT_METRICS_PORT}:${RESTAURANT_METRICS_PORT}"
     depends_on:
       kafka:
         condition: service_healthy

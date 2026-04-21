@@ -25,7 +25,9 @@ const (
 type CreateOrderItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProductId     string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
-	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Price         int64                  `protobuf:"varint,3,opt,name=price,proto3" json:"price,omitempty"`
+	Quantity      int32                  `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -65,6 +67,20 @@ func (x *CreateOrderItem) GetProductId() string {
 		return x.ProductId
 	}
 	return ""
+}
+
+func (x *CreateOrderItem) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateOrderItem) GetPrice() int64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
 }
 
 func (x *CreateOrderItem) GetQuantity() int32 {
@@ -423,13 +439,12 @@ func (x *ListMyOrdersRequest) GetOffset() int32 {
 }
 
 type OrderInfo struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                               // id заказа
-	RestaurantName string                 `protobuf:"bytes,2,opt,name=restaurant_name,json=restaurantName,proto3" json:"restaurant_name,omitempty"` // Название ресторана
-	Status         common.OrderStatus     `protobuf:"varint,3,opt,name=status,proto3,enum=common.OrderStatus" json:"status,omitempty"`              // Статус заказа
-	TotalPrice     int64                  `protobuf:"varint,4,opt,name=total_price,json=totalPrice,proto3" json:"total_price,omitempty"`            // Общая стоимость
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                    // id заказа
+	Status        common.OrderStatus     `protobuf:"varint,2,opt,name=status,proto3,enum=common.OrderStatus" json:"status,omitempty"`   // Статус заказа
+	TotalPrice    int64                  `protobuf:"varint,3,opt,name=total_price,json=totalPrice,proto3" json:"total_price,omitempty"` // Общая стоимость
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OrderInfo) Reset() {
@@ -469,13 +484,6 @@ func (x *OrderInfo) GetId() string {
 	return ""
 }
 
-func (x *OrderInfo) GetRestaurantName() string {
-	if x != nil {
-		return x.RestaurantName
-	}
-	return ""
-}
-
 func (x *OrderInfo) GetStatus() common.OrderStatus {
 	if x != nil {
 		return x.Status
@@ -493,6 +501,7 @@ func (x *OrderInfo) GetTotalPrice() int64 {
 type ListMyOrdersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Orders        []*OrderInfo           `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -534,327 +543,24 @@ func (x *ListMyOrdersResponse) GetOrders() []*OrderInfo {
 	return nil
 }
 
-type ListRestaurantsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`   // Количество в одном запросе
-	Offset        int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"` // Сдвиг от начала
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListRestaurantsRequest) Reset() {
-	*x = ListRestaurantsRequest{}
-	mi := &file_customer_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListRestaurantsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListRestaurantsRequest) ProtoMessage() {}
-
-func (x *ListRestaurantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_proto_msgTypes[10]
+func (x *ListMyOrdersResponse) GetTotal() int32 {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListRestaurantsRequest.ProtoReflect.Descriptor instead.
-func (*ListRestaurantsRequest) Descriptor() ([]byte, []int) {
-	return file_customer_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *ListRestaurantsRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
+		return x.Total
 	}
 	return 0
-}
-
-func (x *ListRestaurantsRequest) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-type RestaurantInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`     // id ресторана
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"` // Название
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RestaurantInfo) Reset() {
-	*x = RestaurantInfo{}
-	mi := &file_customer_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RestaurantInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RestaurantInfo) ProtoMessage() {}
-
-func (x *RestaurantInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RestaurantInfo.ProtoReflect.Descriptor instead.
-func (*RestaurantInfo) Descriptor() ([]byte, []int) {
-	return file_customer_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *RestaurantInfo) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *RestaurantInfo) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-type ListRestaurantsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Restaurants   []*RestaurantInfo      `protobuf:"bytes,1,rep,name=restaurants,proto3" json:"restaurants,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListRestaurantsResponse) Reset() {
-	*x = ListRestaurantsResponse{}
-	mi := &file_customer_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListRestaurantsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListRestaurantsResponse) ProtoMessage() {}
-
-func (x *ListRestaurantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListRestaurantsResponse.ProtoReflect.Descriptor instead.
-func (*ListRestaurantsResponse) Descriptor() ([]byte, []int) {
-	return file_customer_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *ListRestaurantsResponse) GetRestaurants() []*RestaurantInfo {
-	if x != nil {
-		return x.Restaurants
-	}
-	return nil
-}
-
-type GetRestaurantMenuRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RestaurantId  string                 `protobuf:"bytes,1,opt,name=restaurant_id,json=restaurantId,proto3" json:"restaurant_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetRestaurantMenuRequest) Reset() {
-	*x = GetRestaurantMenuRequest{}
-	mi := &file_customer_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetRestaurantMenuRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetRestaurantMenuRequest) ProtoMessage() {}
-
-func (x *GetRestaurantMenuRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetRestaurantMenuRequest.ProtoReflect.Descriptor instead.
-func (*GetRestaurantMenuRequest) Descriptor() ([]byte, []int) {
-	return file_customer_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *GetRestaurantMenuRequest) GetRestaurantId() string {
-	if x != nil {
-		return x.RestaurantId
-	}
-	return ""
-}
-
-type MenuItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                   // id товара
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`               // Название
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"` // Описание
-	Price         int64                  `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`            // Цена
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MenuItem) Reset() {
-	*x = MenuItem{}
-	mi := &file_customer_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MenuItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MenuItem) ProtoMessage() {}
-
-func (x *MenuItem) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MenuItem.ProtoReflect.Descriptor instead.
-func (*MenuItem) Descriptor() ([]byte, []int) {
-	return file_customer_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *MenuItem) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *MenuItem) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *MenuItem) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *MenuItem) GetPrice() int64 {
-	if x != nil {
-		return x.Price
-	}
-	return 0
-}
-
-type GetRestaurantMenuResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	RestaurantId   string                 `protobuf:"bytes,1,opt,name=restaurant_id,json=restaurantId,proto3" json:"restaurant_id,omitempty"`
-	RestaurantName string                 `protobuf:"bytes,2,opt,name=restaurant_name,json=restaurantName,proto3" json:"restaurant_name,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *GetRestaurantMenuResponse) Reset() {
-	*x = GetRestaurantMenuResponse{}
-	mi := &file_customer_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetRestaurantMenuResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetRestaurantMenuResponse) ProtoMessage() {}
-
-func (x *GetRestaurantMenuResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_customer_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetRestaurantMenuResponse.ProtoReflect.Descriptor instead.
-func (*GetRestaurantMenuResponse) Descriptor() ([]byte, []int) {
-	return file_customer_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *GetRestaurantMenuResponse) GetRestaurantId() string {
-	if x != nil {
-		return x.RestaurantId
-	}
-	return ""
-}
-
-func (x *GetRestaurantMenuResponse) GetRestaurantName() string {
-	if x != nil {
-		return x.RestaurantName
-	}
-	return ""
 }
 
 var File_customer_proto protoreflect.FileDescriptor
 
 const file_customer_proto_rawDesc = "" +
 	"\n" +
-	"\x0ecustomer.proto\x12\bcustomer\x1a\fcommon.proto\"L\n" +
+	"\x0ecustomer.proto\x12\bcustomer\x1a\fcommon.proto\"v\n" +
 	"\x0fCreateOrderItem\x12\x1d\n" +
 	"\n" +
-	"product_id\x18\x01 \x01(\tR\tproductId\x12\x1a\n" +
-	"\bquantity\x18\x02 \x01(\x05R\bquantity\"\x84\x01\n" +
+	"product_id\x18\x01 \x01(\tR\tproductId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05price\x18\x03 \x01(\x03R\x05price\x12\x1a\n" +
+	"\bquantity\x18\x04 \x01(\x05R\bquantity\"\x84\x01\n" +
 	"\x12CreateOrderRequest\x12#\n" +
 	"\rrestaurant_id\x18\x01 \x01(\tR\frestaurantId\x12/\n" +
 	"\x05items\x18\x02 \x03(\v2\x19.customer.CreateOrderItemR\x05items\x12\x18\n" +
@@ -873,40 +579,20 @@ const file_customer_proto_rawDesc = "" +
 	"\rrefund_amount\x18\x02 \x01(\x03R\frefundAmount\"C\n" +
 	"\x13ListMyOrdersRequest\x12\x14\n" +
 	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\"\x92\x01\n" +
+	"\x06offset\x18\x02 \x01(\x05R\x06offset\"i\n" +
 	"\tOrderInfo\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
-	"\x0frestaurant_name\x18\x02 \x01(\tR\x0erestaurantName\x12+\n" +
-	"\x06status\x18\x03 \x01(\x0e2\x13.common.OrderStatusR\x06status\x12\x1f\n" +
-	"\vtotal_price\x18\x04 \x01(\x03R\n" +
-	"totalPrice\"C\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x13.common.OrderStatusR\x06status\x12\x1f\n" +
+	"\vtotal_price\x18\x03 \x01(\x03R\n" +
+	"totalPrice\"Y\n" +
 	"\x14ListMyOrdersResponse\x12+\n" +
-	"\x06orders\x18\x01 \x03(\v2\x13.customer.OrderInfoR\x06orders\"F\n" +
-	"\x16ListRestaurantsRequest\x12\x14\n" +
-	"\x05limit\x18\x01 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\"4\n" +
-	"\x0eRestaurantInfo\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"U\n" +
-	"\x17ListRestaurantsResponse\x12:\n" +
-	"\vrestaurants\x18\x01 \x03(\v2\x18.customer.RestaurantInfoR\vrestaurants\"?\n" +
-	"\x18GetRestaurantMenuRequest\x12#\n" +
-	"\rrestaurant_id\x18\x01 \x01(\tR\frestaurantId\"f\n" +
-	"\bMenuItem\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
-	"\x05price\x18\x04 \x01(\x03R\x05price\"i\n" +
-	"\x19GetRestaurantMenuResponse\x12#\n" +
-	"\rrestaurant_id\x18\x01 \x01(\tR\frestaurantId\x12'\n" +
-	"\x0frestaurant_name\x18\x02 \x01(\tR\x0erestaurantName2\xed\x03\n" +
+	"\x06orders\x18\x01 \x03(\v2\x13.customer.OrderInfoR\x06orders\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total2\xb7\x02\n" +
 	"\vCustomerAPI\x12J\n" +
 	"\vCreateOrder\x12\x1c.customer.CreateOrderRequest\x1a\x1d.customer.CreateOrderResponse\x12A\n" +
 	"\bGetOrder\x12\x19.customer.GetOrderRequest\x1a\x1a.customer.GetOrderResponse\x12J\n" +
 	"\vCancelOrder\x12\x1c.customer.CancelOrderRequest\x1a\x1d.customer.CancelOrderResponse\x12M\n" +
-	"\fListMyOrders\x12\x1d.customer.ListMyOrdersRequest\x1a\x1e.customer.ListMyOrdersResponse\x12\\\n" +
-	"\x11GetRestaurantMenu\x12\".customer.GetRestaurantMenuRequest\x1a#.customer.GetRestaurantMenuResponse\x12V\n" +
-	"\x0fListRestaurants\x12 .customer.ListRestaurantsRequest\x1a!.customer.ListRestaurantsResponseB0Z.github.com/suhrobdomoiZ/Eda-1/pkg/api/customerb\x06proto3"
+	"\fListMyOrders\x12\x1d.customer.ListMyOrdersRequest\x1a\x1e.customer.ListMyOrdersResponseB0Z.github.com/suhrobdomoiZ/Eda-1/pkg/api/customerb\x06proto3"
 
 var (
 	file_customer_proto_rawDescOnce sync.Once
@@ -920,51 +606,40 @@ func file_customer_proto_rawDescGZIP() []byte {
 	return file_customer_proto_rawDescData
 }
 
-var file_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_customer_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_customer_proto_goTypes = []any{
-	(*CreateOrderItem)(nil),           // 0: customer.CreateOrderItem
-	(*CreateOrderRequest)(nil),        // 1: customer.CreateOrderRequest
-	(*CreateOrderResponse)(nil),       // 2: customer.CreateOrderResponse
-	(*GetOrderRequest)(nil),           // 3: customer.GetOrderRequest
-	(*GetOrderResponse)(nil),          // 4: customer.GetOrderResponse
-	(*CancelOrderRequest)(nil),        // 5: customer.CancelOrderRequest
-	(*CancelOrderResponse)(nil),       // 6: customer.CancelOrderResponse
-	(*ListMyOrdersRequest)(nil),       // 7: customer.ListMyOrdersRequest
-	(*OrderInfo)(nil),                 // 8: customer.OrderInfo
-	(*ListMyOrdersResponse)(nil),      // 9: customer.ListMyOrdersResponse
-	(*ListRestaurantsRequest)(nil),    // 10: customer.ListRestaurantsRequest
-	(*RestaurantInfo)(nil),            // 11: customer.RestaurantInfo
-	(*ListRestaurantsResponse)(nil),   // 12: customer.ListRestaurantsResponse
-	(*GetRestaurantMenuRequest)(nil),  // 13: customer.GetRestaurantMenuRequest
-	(*MenuItem)(nil),                  // 14: customer.MenuItem
-	(*GetRestaurantMenuResponse)(nil), // 15: customer.GetRestaurantMenuResponse
-	(common.OrderStatus)(0),           // 16: common.OrderStatus
-	(*common.Order)(nil),              // 17: common.Order
+	(*CreateOrderItem)(nil),      // 0: customer.CreateOrderItem
+	(*CreateOrderRequest)(nil),   // 1: customer.CreateOrderRequest
+	(*CreateOrderResponse)(nil),  // 2: customer.CreateOrderResponse
+	(*GetOrderRequest)(nil),      // 3: customer.GetOrderRequest
+	(*GetOrderResponse)(nil),     // 4: customer.GetOrderResponse
+	(*CancelOrderRequest)(nil),   // 5: customer.CancelOrderRequest
+	(*CancelOrderResponse)(nil),  // 6: customer.CancelOrderResponse
+	(*ListMyOrdersRequest)(nil),  // 7: customer.ListMyOrdersRequest
+	(*OrderInfo)(nil),            // 8: customer.OrderInfo
+	(*ListMyOrdersResponse)(nil), // 9: customer.ListMyOrdersResponse
+	(common.OrderStatus)(0),      // 10: common.OrderStatus
+	(*common.Order)(nil),         // 11: common.Order
 }
 var file_customer_proto_depIdxs = []int32{
 	0,  // 0: customer.CreateOrderRequest.items:type_name -> customer.CreateOrderItem
-	16, // 1: customer.CreateOrderResponse.status:type_name -> common.OrderStatus
-	17, // 2: customer.GetOrderResponse.order:type_name -> common.Order
-	16, // 3: customer.OrderInfo.status:type_name -> common.OrderStatus
+	10, // 1: customer.CreateOrderResponse.status:type_name -> common.OrderStatus
+	11, // 2: customer.GetOrderResponse.order:type_name -> common.Order
+	10, // 3: customer.OrderInfo.status:type_name -> common.OrderStatus
 	8,  // 4: customer.ListMyOrdersResponse.orders:type_name -> customer.OrderInfo
-	11, // 5: customer.ListRestaurantsResponse.restaurants:type_name -> customer.RestaurantInfo
-	1,  // 6: customer.CustomerAPI.CreateOrder:input_type -> customer.CreateOrderRequest
-	3,  // 7: customer.CustomerAPI.GetOrder:input_type -> customer.GetOrderRequest
-	5,  // 8: customer.CustomerAPI.CancelOrder:input_type -> customer.CancelOrderRequest
-	7,  // 9: customer.CustomerAPI.ListMyOrders:input_type -> customer.ListMyOrdersRequest
-	13, // 10: customer.CustomerAPI.GetRestaurantMenu:input_type -> customer.GetRestaurantMenuRequest
-	10, // 11: customer.CustomerAPI.ListRestaurants:input_type -> customer.ListRestaurantsRequest
-	2,  // 12: customer.CustomerAPI.CreateOrder:output_type -> customer.CreateOrderResponse
-	4,  // 13: customer.CustomerAPI.GetOrder:output_type -> customer.GetOrderResponse
-	6,  // 14: customer.CustomerAPI.CancelOrder:output_type -> customer.CancelOrderResponse
-	9,  // 15: customer.CustomerAPI.ListMyOrders:output_type -> customer.ListMyOrdersResponse
-	15, // 16: customer.CustomerAPI.GetRestaurantMenu:output_type -> customer.GetRestaurantMenuResponse
-	12, // 17: customer.CustomerAPI.ListRestaurants:output_type -> customer.ListRestaurantsResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	1,  // 5: customer.CustomerAPI.CreateOrder:input_type -> customer.CreateOrderRequest
+	3,  // 6: customer.CustomerAPI.GetOrder:input_type -> customer.GetOrderRequest
+	5,  // 7: customer.CustomerAPI.CancelOrder:input_type -> customer.CancelOrderRequest
+	7,  // 8: customer.CustomerAPI.ListMyOrders:input_type -> customer.ListMyOrdersRequest
+	2,  // 9: customer.CustomerAPI.CreateOrder:output_type -> customer.CreateOrderResponse
+	4,  // 10: customer.CustomerAPI.GetOrder:output_type -> customer.GetOrderResponse
+	6,  // 11: customer.CustomerAPI.CancelOrder:output_type -> customer.CancelOrderResponse
+	9,  // 12: customer.CustomerAPI.ListMyOrders:output_type -> customer.ListMyOrdersResponse
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_customer_proto_init() }
@@ -978,7 +653,7 @@ func file_customer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_customer_proto_rawDesc), len(file_customer_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
