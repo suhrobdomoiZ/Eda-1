@@ -11,6 +11,7 @@ import (
 	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/repository"
 )
 
@@ -23,13 +24,14 @@ var (
 
 type CustomerService struct {
 	pb.UnimplementedCustomerAPIServer
-
-	pgRepo *repository.PostgresRepo
+	pgRepo  *repository.PostgresRepo
+	metrics *metrics.Metrics
 }
 
-func NewCustomerService(pgRepo *repository.PostgresRepo) *CustomerService {
+func NewCustomerService(pgRepo *repository.PostgresRepo, m *metrics.Metrics) *CustomerService {
 	return &CustomerService{
-		pgRepo: pgRepo,
+		pgRepo:  pgRepo,
+		metrics: m,
 	}
 }
 
@@ -100,6 +102,8 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 	if err := s.pgRepo.CreateOrder(ctx, order, orderItems); err != nil {
 		return nil, status.Errorf(codes.Internal, "create order: %v", err)
 	}
+
+	s.metrics.OnOrderCreated(float64(totalPrice / 100))
 
 	// TODO: Отправить событие в Kafka / уведомить ресторан
 
@@ -190,6 +194,8 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 	if err := s.pgRepo.CancelOrder(ctx, orderID); err != nil {
 		return nil, status.Errorf(codes.Internal, "cancel order: %v", err)
 	}
+
+	s.metrics.OnOrderCancelled()
 
 	refundAmount := order.TotalPrice
 

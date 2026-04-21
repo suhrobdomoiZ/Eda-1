@@ -20,6 +20,8 @@ type Metrics struct {
 	OrdersDelivered  prometheus.Counter
 	OrdersCancelled  prometheus.Counter
 	OrdersInProgress prometheus.Gauge
+	OrdersWaiting    prometheus.Gauge
+	OrdersDelivering prometheus.Gauge
 	OrdersPrices     prometheus.Histogram
 }
 
@@ -85,6 +87,22 @@ func NewMetrics(namespace string) *Metrics {
 			},
 		),
 
+		OrdersWaiting: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "orders_waiting",
+				Help:      "Current number of orders waiting for courier",
+			},
+		),
+
+		OrdersDelivering: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Name:      "orders_delivering",
+				Help:      "Current number of orders being delivered",
+			},
+		),
+
 		OrdersPrices: promauto.NewHistogram(
 			prometheus.HistogramOpts{
 				Namespace: namespace,
@@ -99,4 +117,35 @@ func NewMetrics(namespace string) *Metrics {
 // HTTP handler для Prometheus scrape endpoint
 func Handler() http.Handler {
 	return promhttp.Handler()
+}
+
+// Вызывается при создании заказа
+func (m *Metrics) OnOrderCreated(price float64) {
+	m.OrdersCreated.Inc()
+	m.OrdersInProgress.Inc()
+	m.OrdersPrices.Observe(price)
+}
+
+// Вызывается при создании заказа
+func (m *Metrics) OnOrderCooked() {
+	m.OrdersWaiting.Inc()
+}
+
+// Вызывается при создании заказа
+func (m *Metrics) OnOrderPickUp() {
+	m.OrdersWaiting.Dec()
+	m.OrdersDelivering.Inc()
+}
+
+// Вызывается при завершении доставки
+func (m *Metrics) OnOrderDelivered() {
+	m.OrdersDelivering.Dec()
+	m.OrdersDelivered.Inc()
+	m.OrdersInProgress.Dec()
+}
+
+// Вызывается при отмене заказа
+func (m *Metrics) OnOrderCancelled() {
+	m.OrdersCancelled.Inc()
+	m.OrdersInProgress.Dec()
 }
