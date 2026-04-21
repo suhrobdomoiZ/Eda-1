@@ -11,6 +11,7 @@ import (
 	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/customer/internal/repository"
 )
@@ -24,14 +25,20 @@ var (
 
 type CustomerService struct {
 	pb.UnimplementedCustomerAPIServer
-	pgRepo  *repository.PostgresRepo
-	metrics *metrics.Metrics
+	pgRepo   *repository.PostgresRepo
+	producer *kafka.Producer
+	metrics  *metrics.Metrics
 }
 
-func NewCustomerService(pgRepo *repository.PostgresRepo, m *metrics.Metrics) *CustomerService {
+func NewCustomerService(
+	pgRepo *repository.PostgresRepo,
+	p *kafka.Producer,
+	m *metrics.Metrics,
+) *CustomerService {
 	return &CustomerService{
-		pgRepo:  pgRepo,
-		metrics: m,
+		pgRepo:   pgRepo,
+		producer: p,
+		metrics:  m,
 	}
 }
 
@@ -103,9 +110,16 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 		return nil, status.Errorf(codes.Internal, "create order: %v", err)
 	}
 
-	s.metrics.OnOrderCreated(float64(totalPrice / 100))
+	// kafka event
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_CREATED,
+	}
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		// TODO: error metric
+	}
 
-	// TODO: Отправить событие в Kafka / уведомить ресторан
+	s.metrics.OnOrderCreated(float64(totalPrice / 100))
 
 	return &CreateOrderResult{
 		OrderID: orderID,
@@ -195,11 +209,18 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 		return nil, status.Errorf(codes.Internal, "cancel order: %v", err)
 	}
 
+	// kafka event
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_CANCELLED,
+	}
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		// TODO: error metric
+	}
+
 	s.metrics.OnOrderCancelled()
 
 	refundAmount := order.TotalPrice
-
-	// TODO: Уведомить ресторан об отмене
 
 	return &CancelOrderResult{
 		Success:      true,

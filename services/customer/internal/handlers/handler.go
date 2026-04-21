@@ -2,14 +2,36 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
 	common_methods "github.com/suhrobdomoiZ/Eda-1/pkg/common_methods"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	service "github.com/suhrobdomoiZ/Eda-1/services/customer/internal/services"
 )
+
+func NewOrderConsumerHandler(svc *service.CustomerService) kafka.HandlerFunc {
+	return func(ctx context.Context, key string, value []byte) error {
+		var event kafka.ChangeOrderStatusEvent
+		if err := json.Unmarshal(value, &event); err != nil {
+			return fmt.Errorf("unmarshal event: %w", err)
+		}
+
+		switch event.NewStatus {
+		case common_api.OrderStatus_ORDER_STATUS_DELIVERED:
+			// Можно отправить push-уведомление клиенту
+		case common_api.OrderStatus_ORDER_STATUS_CANCELLED:
+			// TODO: уведомить клиента об отмене рестораном
+		}
+
+		return nil
+	}
+}
 
 type CustomerHandler struct {
 	pb.UnimplementedCustomerAPIServer
