@@ -63,7 +63,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api_gateway
     networks:
@@ -75,7 +75,7 @@ services:
     ports:
       - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -87,6 +87,25 @@ services:
       - customer
       - courier
       - restaurant
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: eda-grafana
+    ports:
+      - "${GRAFANA_PORT}:${GRAFANA_PORT}"
+    volumes:
+      - ./deployment/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./deployment/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=http://localhost:${GRAFANA_PORT}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    networks:
+      - backend
+    depends_on:
+      - prometheus
 
   api_gateway:
     build:
@@ -185,3 +204,4 @@ volumes:
   redisdata:
   kafkadata:
   prometheus_data:
+  grafana_data:
