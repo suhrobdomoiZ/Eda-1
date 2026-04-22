@@ -1,13 +1,9 @@
 package handlers
 
 import (
-	"context"
-
 	"github.com/gofiber/fiber/v2"
-	"google.golang.org/grpc/metadata"
 
 	cpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
-	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
 
 type CustomerHandler struct {
@@ -16,15 +12,6 @@ type CustomerHandler struct {
 
 func NewCustomerHandler(client cpb.CustomerAPIClient) *CustomerHandler {
 	return &CustomerHandler{client: client}
-}
-
-// outgoingCtx добавляет user_id и role в исходящий gRPC контекст
-func outgoingCtx(c *fiber.Ctx) context.Context {
-	md := metadata.Pairs(
-		"user_id", middleware.GetUserID(c),
-		"role", middleware.GetRole(c).String(),
-	)
-	return metadata.NewOutgoingContext(context.Background(), md)
 }
 
 // POST /api/v1/customer/orders  [JWT, role=customer]

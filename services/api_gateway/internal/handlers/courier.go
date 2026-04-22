@@ -1,13 +1,9 @@
 package handlers
 
 import (
-	"context"
-
 	"github.com/gofiber/fiber/v2"
-	"google.golang.org/grpc/metadata"
 
 	courierpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
-	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
 
 type CourierHandler struct {
@@ -16,14 +12,6 @@ type CourierHandler struct {
 
 func NewCourierHandler(client courierpb.CourierAPIClient) *CourierHandler {
 	return &CourierHandler{client: client}
-}
-
-func outgoingCtx(c *fiber.Ctx) context.Context {
-	md := metadata.Pairs(
-		"user_id", middleware.GetUserID(c),
-		"role", middleware.GetRole(c).String(),
-	)
-	return metadata.NewOutgoingContext(context.Background(), md)
 }
 
 // GET /api/v1/courier/orders/available  [JWT, role=courier]
