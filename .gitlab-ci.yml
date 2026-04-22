@@ -11,7 +11,7 @@ variables:
 
 test:
   stage: test
-  image: golang:1.26.1-alpine
+  image: golang:1.26.1
   before_script:
     - go mod download
   script:
