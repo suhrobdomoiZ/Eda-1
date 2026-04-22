@@ -60,7 +60,7 @@ The service consists of 5 main microservices:
 
 Single entry point for all clients. Routes requests to internal gRPC services and handles cross-cutting concerns.
 
-#### Responsibilities
+#### Gateway Responsibilities
 
 - Routing (HTTP to gRPC)
 - Authentication (JWT validation)
@@ -141,6 +141,41 @@ Authentication and authorization service (JWT + Refresh Token).
 ---
 
 ### Restaurant (:9004)
+
+Menu management and order processing for restaurant owners.
+
+#### Restaurant Responsibilities
+
+- CRUD operations for menu items (products)
+- View incoming orders
+- Update order status (cooking → ready)
+- Publish order status changes to Kafka
+- List all restaurants (public endpoint)
+
+#### Menu Management
+
+Method	                  Description	Access
+POST /menu	              Add product	Restaurant only
+PUT /menu/:id	            Update product	Restaurant only
+DELETE /menu/:id	Delete product	Restaurant only
+GET /menu/:restaurant_id	List products	Public
+GET /restaurants	List all restaurants	Public
+
+Order Processing Flow
+Receives ORDER_CREATED event from Kafka (customer created order)
+
+Restaurant views order → changes status to cooking
+
+When ready → changes status to ready
+
+Publishes ORDER_READY event to Kafka
+
+Courier service picks up the order
+
+Database Tables
+products — menu items with price, description, availability
+
+restaurant_profiles — extended restaurant info (name, address, phone)
 
 ### Customer (:9005)
 

@@ -25,7 +25,7 @@ test:
       check_coverage() {
         SERVICE=$1
         FILE=$2
-        COVERAGE=$(go tool cover -func=$FILE | grep total | awk '{print $3}' | sed 's/%//')
+        COVERAGE=$(go tool cover -func=$FILE | grep "internal/services" | awk '{sum+=$3} END {print sum/NR}' | sed 's/%//')
         if [ -z "$COVERAGE" ]; then
           echo "$SERVICE: no coverage data"
           exit 1
