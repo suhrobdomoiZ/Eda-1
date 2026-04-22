@@ -14,9 +14,25 @@ import (
 	"github.com/suhrobdomoiZ/Eda-1/services/auth/internal/services"
 )
 
-func newTestAuthService(pg *mockPgRepo, rdb *mockRedisRepo) *services.AuthService {
+type mockMetrics struct {
+	mock.Mock
+}
+
+func (m *mockMetrics) IncError(method, errorType string) {
+	m.Called(method, errorType)
+}
+
+func (m *mockMetrics) IncRequest(method, status string) {
+	m.Called(method, status)
+}
+
+func (m *mockMetrics) ObserveDuration(method string, duration float64) {
+	m.Called(method, duration)
+}
+
+func newTestAuthService(pg *mockPgRepo, rdb *mockRedisRepo, m *mockMetrics) *services.AuthService {
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	return services.NewAuthService(pg, rdb, jwt, nil)
+	return services.NewAuthService(pg, rdb, jwt, m)
 }
 
 // Register
@@ -24,7 +40,8 @@ func newTestAuthService(pg *mockPgRepo, rdb *mockRedisRepo) *services.AuthServic
 func TestRegister_Customer_Success(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	pg.On("CreateUser", mock.Anything, mock.MatchedBy(func(u *repository.User) bool {
 		return u.Username == "alice" && u.Role == "user"
@@ -50,7 +67,8 @@ func TestRegister_Customer_Success(t *testing.T) {
 func TestRegister_Restaurant_CreatesProfile(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	pg.On("CreateUser", mock.Anything, mock.MatchedBy(func(u *repository.User) bool {
 		return u.Role == "restaurant"
@@ -78,7 +96,8 @@ func TestRegister_Restaurant_CreatesProfile(t *testing.T) {
 func TestRegister_UserAlreadyExists(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	pg.On("CreateUser", mock.Anything, mock.Anything).Return(repository.ErrAlreadyExists)
 
@@ -97,7 +116,8 @@ func TestRegister_UserAlreadyExists(t *testing.T) {
 func TestLogin_Success(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	hash, _ := bcryptHash("secret")
 
@@ -122,7 +142,8 @@ func TestLogin_Success(t *testing.T) {
 func TestLogin_WrongPassword(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	hash, _ := bcryptHash("correct-password")
 
@@ -141,7 +162,8 @@ func TestLogin_WrongPassword(t *testing.T) {
 func TestLogin_UserNotFound(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	pg.On("GetUserByUsername", mock.Anything, "ghost").Return(nil, repository.ErrNotFound)
 
@@ -155,7 +177,8 @@ func TestRefreshToken_Success(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	svc := services.NewAuthService(pg, rdb, jwt, nil)
+	metrics := &mockMetrics{}
+	svc := services.NewAuthService(pg, rdb, jwt, metrics)
 
 	refreshToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 
@@ -177,7 +200,8 @@ func TestRefreshToken_NotInRedis(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	svc := services.NewAuthService(pg, rdb, jwt, nil)
+	metrics := &mockMetrics{}
+	svc := services.NewAuthService(pg, rdb, jwt, metrics)
 
 	refreshToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 
@@ -193,7 +217,8 @@ func TestLogout_Success(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	svc := services.NewAuthService(pg, rdb, jwt, nil)
+	metrics := &mockMetrics{}
+	svc := services.NewAuthService(pg, rdb, jwt, metrics)
 
 	refreshToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 	rdb.On("DeleteRefreshToken", mock.Anything, "user-1", refreshToken).Return(nil)
@@ -208,7 +233,8 @@ func TestLogout_ExpiredToken_NoError(t *testing.T) {
 	rdb := &mockRedisRepo{}
 
 	jwt := services.NewJWTService("test-secret", -time.Minute, -time.Minute)
-	svc := services.NewAuthService(pg, rdb, jwt, nil)
+	metrics := &mockMetrics{}
+	svc := services.NewAuthService(pg, rdb, jwt, metrics)
 
 	expiredToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 
@@ -222,7 +248,8 @@ func TestLogout_ExpiredToken_NoError(t *testing.T) {
 func TestValidateToken_Valid(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
 
 	jwtSvc := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
 	token, _ := jwtSvc.GenerateAccessToken("user-1", "courier")
@@ -236,10 +263,15 @@ func TestValidateToken_Valid(t *testing.T) {
 func TestValidateToken_Invalid(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
-	svc := newTestAuthService(pg, rdb)
+	metrics := &mockMetrics{}
+	svc := newTestAuthService(pg, rdb, metrics)
+
+	metrics.On("IncError", "validate_token", "validation").Return()
 
 	_, err := svc.ValidateToken(context.Background(), "garbage-token")
 	assert.Error(t, err)
+
+	metrics.AssertCalled(t, "IncError", "validate_token", "validation")
 }
 
 // helpers

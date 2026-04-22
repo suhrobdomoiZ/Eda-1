@@ -20,33 +20,40 @@ import (
 func main() {
 	cfg := config.Load()
 
+	// PostgreSQL
 	pgRepo, err := repository.NewPostgresRepo(cfg.Postgres.DSN())
 	if err != nil {
-		log.Fatalf("postgres: %v", err)
+		log.Fatalf("postgres connection failed: %v", err)
 	}
 
-	// metrics
+	// Metrics
 	m := metrics.NewMetrics("auth")
 	go func() {
 		http.Handle("/metrics", metrics.Handler())
-		log.Printf("auth metrics server listening ", "port=", cfg.Metrics.Port)
-		log.Fatalf(http.ListenAndServe(":"+cfg.Metrics.Port, nil).Error())
+		log.Printf("auth metrics server listening on port %s", cfg.Metrics.Port)
+		if err := http.ListenAndServe(":"+cfg.Metrics.Port, nil); err != nil {
+			log.Fatalf("metrics server failed: %v", err)
+		}
 	}()
 
+	// Redis
 	redisRepo, err := repository.NewRedisRepo(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 	if err != nil {
-		log.Fatalf("redis: %v", err)
+		log.Fatalf("redis connection failed: %v", err)
 	}
 
+	// JWT Service
 	jwtSvc := service.NewJWTService(
 		cfg.JWT.Secret,
 		cfg.JWT.AccessTokenTTL,
 		cfg.JWT.RefreshTokenTTL,
 	)
 
+	// Auth Service
 	authSvc := service.NewAuthService(pgRepo, redisRepo, jwtSvc, m)
 	authServer := api.NewServer(authSvc)
 
+	// gRPC Server
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(m.UnaryServerInterceptor()),
 	)
@@ -56,11 +63,11 @@ func main() {
 	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("listen: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
 	log.Printf("auth gRPC server listening on %s", addr)
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("serve: %v", err)
+		log.Fatalf("failed to serve: %v", err)
 	}
 }

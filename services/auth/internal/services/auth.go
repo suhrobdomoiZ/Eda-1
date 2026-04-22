@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -18,18 +19,38 @@ var (
 	ErrUserNotFound       = errors.New("user not found")
 )
 
+type PostgresRepository interface {
+	CreateUser(ctx context.Context, u *repository.User) error
+	GetUserByUsername(ctx context.Context, username string) (*repository.User, error)
+	GetUserByID(ctx context.Context, id string) (*repository.User, error)
+	CreateRestaurantProfile(ctx context.Context, p *repository.RestaurantProfile) error
+	GetRestaurantProfile(ctx context.Context, userID string) (*repository.RestaurantProfile, error)
+	CreateCourierProfile(ctx context.Context, p *repository.CourierProfile) error
+	GetCourierProfile(ctx context.Context, userID string) (*repository.CourierProfile, error)
+}
+
+type RedisRepository interface {
+	SaveRefreshToken(ctx context.Context, userID, token string, ttl time.Duration) error
+	GetUserIDByRefreshToken(ctx context.Context, token string) (string, error)
+	DeleteRefreshToken(ctx context.Context, userID, token string) error
+}
+
+type Metrics interface {
+	IncError(method, errorType string)
+}
+
 type AuthService struct {
-	pg      repository.PgRepo
-	rdb     repository.RedisRepo
+	pg      PostgresRepository
+	rdb     RedisRepository
 	jwt     *JWTService
-	metrics *metrics.Metrics
+	metrics Metrics
 }
 
 func NewAuthService(
-	pg repository.PgRepo,
-	rdb repository.RedisRepo,
+	pg PostgresRepository,
+	rdb RedisRepository,
 	jwt *JWTService,
-	m *metrics.Metrics,
+	m Metrics,
 ) *AuthService {
 	return &AuthService{
 		pg:      pg,
