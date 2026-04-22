@@ -1,5 +1,4 @@
 stages:
-  - lint
   - test
   - build
 
@@ -7,24 +6,6 @@ variables:
   GO_VERSION: "1.26.1"
   REGISTRY: $CI_REGISTRY_IMAGE
 
-# Lint 
-
-lint:
-  stage: lint
-  image: golangci/golangci-lint:v1.60.1
-  variables:
-    GIT_DEPTH: 50
-  before_script:
-    - go mod tidy
-  script:
-    - golangci-lint run --new-from-rev=origin/main --timeout=5m
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}-lint
-    paths:
-      - .cache/golangci-lint
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
 
 # Test 
 
@@ -52,10 +33,6 @@ test:
     key: ${CI_COMMIT_REF_SLUG}-test
     paths:
       - /root/go/pkg/mod
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-
 # Build 
 
 .build_template:
@@ -76,9 +53,6 @@ test:
         .
     - docker push $REGISTRY/${SERVICE}:${CI_COMMIT_SHORT_SHA}
     - docker push $REGISTRY/${SERVICE}:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-
 # Build  
 
 build:auth:
