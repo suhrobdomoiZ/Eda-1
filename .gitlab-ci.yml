@@ -1,29 +1,107 @@
 stages:
   - lint
-  - test #TODO:прописать для теста
-  - build #TODO:прописать для сборки
+  - test
+  - build
 
+variables:
+  GO_VERSION: "1.26.1"
+  REGISTRY: $CI_REGISTRY_IMAGE
+
+# Lint 
 
 lint:
   stage: lint
-
   image: golangci/golangci-lint:v1.60.1
-
   variables:
     GIT_DEPTH: 50
-    GO_VERSION: "1.26.1"
-
   before_script:
     - go mod download
-
   script:
     - golangci-lint run --new-from-rev=origin/main --timeout=5m
-
   cache:
     key: ${CI_COMMIT_REF_SLUG}-lint
     paths:
       - .cache/golangci-lint
-
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
+
+# Test 
+
+test:
+  stage: test
+  image: golang:1.23-alpine
+  before_script:
+    - go mod download
+  script:
+    - go test -v -race -coverprofile=coverage.out ./services/auth/...
+    - go test -v -race -coverprofile=coverage_gateway.out ./services/api_gateway/...
+    - go tool cover -func=coverage.out
+    - go tool cover -func=coverage_gateway.out
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
+    paths:
+      - coverage.out
+      - coverage_gateway.out
+    expire_in: 1 week
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-test
+    paths:
+      - /root/go/pkg/mod
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# Build 
+
+.build_template:
+  stage: build
+  image: docker:26
+  services:
+    - docker:26-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      docker build \
+        -f services/${SERVICE}/Dockerfile \
+        -t $REGISTRY/${SERVICE}:${CI_COMMIT_SHORT_SHA} \
+        -t $REGISTRY/${SERVICE}:latest \
+        .
+    - docker push $REGISTRY/${SERVICE}:${CI_COMMIT_SHORT_SHA}
+    - docker push $REGISTRY/${SERVICE}:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# Build  
+
+build:auth:
+  extends: .build_template
+  variables:
+    SERVICE: auth
+
+build:api_gateway:
+  extends: .build_template
+  variables:
+    SERVICE: api_gateway
+
+build:customer:
+  extends: .build_template
+  variables:
+    SERVICE: customer
+
+build:restaurant:
+  extends: .build_template
+  variables:
+    SERVICE: restaurant
+
+build:courier:
+  extends: .build_template
+  variables:
+    SERVICE: courier
