@@ -9,12 +9,17 @@ import (
 
 type Config struct {
 	GRPC     GRPCConfig
+	Metrics  MetricsConfig
 	Postgres PostgresConfig
 	Redis    RedisConfig
 	JWT      JWTConfig
 }
 
 type GRPCConfig struct {
+	Port string
+}
+
+type MetricsConfig struct {
 	Port string
 }
 
@@ -51,6 +56,9 @@ func Load() *Config {
 	cfg := &Config{
 		GRPC: GRPCConfig{
 			Port: getEnv("AUTH_GRPC_PORT", "50051"),
+		},
+		Metrics: MetricsConfig{
+			Port: getEnv("AUTH_METRICS_PORT", "9091"),
 		},
 		Postgres: PostgresConfig{
 			Host:     getEnv("DATABASE_HOST", "localhost"),

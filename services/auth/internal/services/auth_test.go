@@ -16,7 +16,7 @@ import (
 
 func newTestAuthService(pg *mockPgRepo, rdb *mockRedisRepo) *services.AuthService {
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	return services.NewAuthService(pg, rdb, jwt)
+	return services.NewAuthService(pg, rdb, jwt, nil)
 }
 
 // Register
