@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/grpcmeta"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	service "github.com/suhrobdomoiZ/Eda-1/services/courier/internal/services"
 )
@@ -23,7 +21,7 @@ func NewOrderConsumerHandler(svc *service.CourierService) kafka.HandlerFunc {
 
 		switch event.NewStatus {
 		case common_api.OrderStatus_ORDER_STATUS_READY:
-			// Новый заказ готов к доставке — можно уведомить курьеров поблизости
+			// TODO: уведомить курьеров поблизости
 		}
 
 		return nil
@@ -39,11 +37,10 @@ func NewCourierHandler(svc *service.CourierService) *CourierHandler {
 	return &CourierHandler{svc: svc}
 }
 
-// Посмотреть доступные заказы
 func (h *CourierHandler) GetAvailableOrders(ctx context.Context, req *pb.GetAvailableOrdersRequest) (*pb.GetAvailableOrdersResponse, error) {
-	courierID, ok := ctx.Value("user_id").(string)
-	if !ok || courierID == "" {
-		return nil, status.Error(codes.Unauthenticated, "user_id not found in context")
+	courierID, err := grpcmeta.GetUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	limit := req.Limit
@@ -61,11 +58,10 @@ func (h *CourierHandler) GetAvailableOrders(ctx context.Context, req *pb.GetAvai
 	}, nil
 }
 
-// Принять заказ
 func (h *CourierHandler) AcceptOrder(ctx context.Context, req *pb.AcceptOrderRequest) (*pb.AcceptOrderResponse, error) {
-	courierID, ok := ctx.Value("user_id").(string)
-	if !ok || courierID == "" {
-		return nil, status.Error(codes.Unauthenticated, "user_id not found in context")
+	courierID, err := grpcmeta.GetUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	result, err := h.svc.AcceptOrder(ctx, courierID, req.OrderId)
@@ -79,16 +75,11 @@ func (h *CourierHandler) AcceptOrder(ctx context.Context, req *pb.AcceptOrderReq
 	}, nil
 }
 
-// Все заказы курьера
 func (h *CourierHandler) GetMyOrders(ctx context.Context, req *pb.GetMyOrdersRequest) (*pb.GetMyOrdersResponse, error) {
-	// courier_id берём из запроса, если пусто — из контекста
-	courierID := req.CourierId
-	if courierID == "" {
-		var ok bool
-		courierID, ok = ctx.Value("user_id").(string)
-		if !ok || courierID == "" {
-			return nil, status.Error(codes.Unauthenticated, "user_id not found in context")
-		}
+	// courier_id всегда из metadata — поле в req игнорируем
+	courierID, err := grpcmeta.GetUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	result, err := h.svc.GetMyOrders(ctx, courierID)
@@ -101,11 +92,10 @@ func (h *CourierHandler) GetMyOrders(ctx context.Context, req *pb.GetMyOrdersReq
 	}, nil
 }
 
-// Забрать заказ
 func (h *CourierHandler) PickUpOrder(ctx context.Context, req *pb.PickUpOrderRequest) (*pb.PickUpOrderResponse, error) {
-	courierID, ok := ctx.Value("user_id").(string)
-	if !ok || courierID == "" {
-		return nil, status.Error(codes.Unauthenticated, "user_id not found in context")
+	courierID, err := grpcmeta.GetUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	result, err := h.svc.PickUpOrder(ctx, courierID, req.OrderId)
@@ -119,11 +109,10 @@ func (h *CourierHandler) PickUpOrder(ctx context.Context, req *pb.PickUpOrderReq
 	}, nil
 }
 
-// Сдать заказ
 func (h *CourierHandler) DeliverOrder(ctx context.Context, req *pb.DeliverOrderRequest) (*pb.DeliverOrderResponse, error) {
-	courierID, ok := ctx.Value("user_id").(string)
-	if !ok || courierID == "" {
-		return nil, status.Error(codes.Unauthenticated, "user_id not found in context")
+	courierID, err := grpcmeta.GetUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	result, err := h.svc.DeliverOrder(ctx, courierID, req.OrderId)

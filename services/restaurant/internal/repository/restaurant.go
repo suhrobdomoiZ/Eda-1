@@ -65,7 +65,7 @@ func (r *Restaurant) UpdateProductInMenu(ctx context.Context, product *models.Fu
 	SET
     name = $2,
     description = $3,
-    price = $4,
+    price = $4
     WHERE id = $1 AND restaurant_id = $5;
 	`
 	_, err := r.pool.Exec(

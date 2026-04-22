@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/gofiber/fiber/v2"
+	"google.golang.org/grpc/metadata"
 
 	cpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/customer"
+	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
 
 type CustomerHandler struct {
@@ -16,6 +18,15 @@ func NewCustomerHandler(client cpb.CustomerAPIClient) *CustomerHandler {
 	return &CustomerHandler{client: client}
 }
 
+// outgoingCtx добавляет user_id и role в исходящий gRPC контекст
+func outgoingCtx(c *fiber.Ctx) context.Context {
+	md := metadata.Pairs(
+		"user_id", middleware.GetUserID(c),
+		"role", middleware.GetRole(c).String(),
+	)
+	return metadata.NewOutgoingContext(context.Background(), md)
+}
+
 // POST /api/v1/customer/orders  [JWT, role=customer]
 func (h *CustomerHandler) CreateOrder(c *fiber.Ctx) error {
 	var req cpb.CreateOrderRequest
@@ -23,7 +34,7 @@ func (h *CustomerHandler) CreateOrder(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
 	}
 
-	resp, err := h.client.CreateOrder(context.Background(), &req)
+	resp, err := h.client.CreateOrder(outgoingCtx(c), &req)
 	if err != nil {
 		return grpcError(c, err)
 	}
@@ -32,7 +43,7 @@ func (h *CustomerHandler) CreateOrder(c *fiber.Ctx) error {
 
 // GET /api/v1/customer/orders  [JWT, role=customer]
 func (h *CustomerHandler) ListMyOrders(c *fiber.Ctx) error {
-	resp, err := h.client.ListMyOrders(context.Background(), &cpb.ListMyOrdersRequest{
+	resp, err := h.client.ListMyOrders(outgoingCtx(c), &cpb.ListMyOrdersRequest{
 		Limit:  int32(c.QueryInt("limit", 20)),
 		Offset: int32(c.QueryInt("offset", 0)),
 	})
@@ -44,7 +55,7 @@ func (h *CustomerHandler) ListMyOrders(c *fiber.Ctx) error {
 
 // GET /api/v1/customer/orders/:order_id  [JWT, role=customer]
 func (h *CustomerHandler) GetOrder(c *fiber.Ctx) error {
-	resp, err := h.client.GetOrder(context.Background(), &cpb.GetOrderRequest{
+	resp, err := h.client.GetOrder(outgoingCtx(c), &cpb.GetOrderRequest{
 		OrderId: c.Params("order_id"),
 	})
 	if err != nil {
@@ -55,7 +66,7 @@ func (h *CustomerHandler) GetOrder(c *fiber.Ctx) error {
 
 // DELETE /api/v1/customer/orders/:order_id  [JWT, role=customer]
 func (h *CustomerHandler) CancelOrder(c *fiber.Ctx) error {
-	resp, err := h.client.CancelOrder(context.Background(), &cpb.CancelOrderRequest{
+	resp, err := h.client.CancelOrder(outgoingCtx(c), &cpb.CancelOrderRequest{
 		OrderId: c.Params("order_id"),
 	})
 	if err != nil {
