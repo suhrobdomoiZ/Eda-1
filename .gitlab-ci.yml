@@ -30,14 +30,13 @@ test:
           echo "$SERVICE: no coverage data"
           exit 1
         fi
-        if (( $(echo "$COVERAGE < 30" | bc -l) )); then
+        if awk "BEGIN {exit !($COVERAGE < 30)}"; then
           echo "$SERVICE: coverage $COVERAGE% < 30%"
           exit 1
         fi
         echo "$SERVICE: coverage $COVERAGE% >= 30%"
       }
     
-    - apk add --no-cache bc
     - check_coverage "auth" "coverage_auth.out"
     - check_coverage "customer" "coverage_customer.out"
     - check_coverage "courier" "coverage_courier.out"
@@ -54,10 +53,6 @@ test:
       - coverage_*.out
       - coverage.out
     expire_in: 1 week
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}-test
-    paths:
-      - /root/go/pkg/mod
 
 # Build Stage
 
