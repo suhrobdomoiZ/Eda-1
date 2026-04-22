@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/auth"
+	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	api "github.com/suhrobdomoiZ/Eda-1/services/auth/internal/api/server"
 	"github.com/suhrobdomoiZ/Eda-1/services/auth/internal/config"
 	"github.com/suhrobdomoiZ/Eda-1/services/auth/internal/repository"
@@ -23,6 +25,14 @@ func main() {
 		log.Fatalf("postgres: %v", err)
 	}
 
+	// metrics
+	m := metrics.NewMetrics("auth")
+	go func() {
+		http.Handle("/metrics", metrics.Handler())
+		log.Printf("auth metrics server listening ", "port=", cfg.Metrics.Port)
+		log.Fatalf(http.ListenAndServe(":"+cfg.Metrics.Port, nil).Error())
+	}()
+
 	redisRepo, err := repository.NewRedisRepo(cfg.Redis.Addr, cfg.Redis.Password, cfg.Redis.DB)
 	if err != nil {
 		log.Fatalf("redis: %v", err)
@@ -34,10 +44,12 @@ func main() {
 		cfg.JWT.RefreshTokenTTL,
 	)
 
-	authSvc := service.NewAuthService(pgRepo, redisRepo, jwtSvc)
+	authSvc := service.NewAuthService(pgRepo, redisRepo, jwtSvc, m)
 	authServer := api.NewServer(authSvc)
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(m.UnaryServerInterceptor()),
+	)
 	pb.RegisterAuthServiceServer(grpcServer, authServer)
 	reflection.Register(grpcServer)
 

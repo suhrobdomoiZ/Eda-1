@@ -23,17 +23,41 @@ var (
 	ErrInvalidInput      = errors.New("invalid input")
 )
 
+type CustomerRepository interface {
+	CreateOrder(ctx context.Context, order *repository.Order, items []repository.OrderItem) error
+	GetOrderByID(ctx context.Context, orderID string) (*repository.Order, error)
+	GetOrderItems(ctx context.Context, orderID string) ([]repository.OrderItem, error)
+	GetOrderWithItems(ctx context.Context, orderID string) (*repository.OrderWithItems, error)
+	UpdateOrderStatus(ctx context.Context, orderID, status string) error
+	CancelOrder(ctx context.Context, orderID string) error
+	ListOrdersByUserID(ctx context.Context, userID string, limit, offset int32) ([]repository.OrderListItem, error)
+	CountOrdersByUserID(ctx context.Context, userID string) (int32, error)
+	CheckOrderBelongsToUser(ctx context.Context, orderID, userID string) (bool, error)
+	Close() error
+}
+
+type Producer interface {
+	Send(ctx context.Context, key string, payload any) error
+	Close() error
+}
+
+type Metrics interface {
+	IncError(method, errorType string)
+	OnOrderCreated(price float64)
+	OnOrderCancelled()
+}
+
 type CustomerService struct {
 	pb.UnimplementedCustomerAPIServer
-	pgRepo   *repository.PostgresRepo
-	producer *kafka.Producer
-	metrics  *metrics.Metrics
+	pgRepo   CustomerRepository
+	producer Producer
+	metrics  Metrics
 }
 
 func NewCustomerService(
-	pgRepo *repository.PostgresRepo,
-	p *kafka.Producer,
-	m *metrics.Metrics,
+	pgRepo CustomerRepository,
+	p Producer,
+	m Metrics,
 ) *CustomerService {
 	return &CustomerService{
 		pgRepo:   pgRepo,
@@ -58,12 +82,15 @@ type CreateOrderResult struct {
 
 func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInput) (*CreateOrderResult, error) {
 	if input.RestaurantID == "" {
+		s.metrics.IncError("create_order", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.InvalidArgument, "restaurant_id is required")
 	}
 	if len(input.Items) == 0 {
+		s.metrics.IncError("create_order", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.InvalidArgument, "items cannot be empty")
 	}
 	if input.Address == "" {
+		s.metrics.IncError("create_order", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.InvalidArgument, "address is required")
 	}
 
@@ -94,7 +121,7 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 	}
 
 	if err := s.pgRepo.CreateOrder(ctx, order, orderItems); err != nil {
-		// TODO: error metric
+		s.metrics.IncError("create_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "create order: %v", err)
 	}
 
@@ -103,7 +130,9 @@ func (s *CustomerService) CreateOrder(ctx context.Context, input *CreateOrderInp
 		OrderId:   uuid.MustParse(orderID),
 		NewStatus: common_api.OrderStatus_ORDER_STATUS_CREATED,
 	}
-	_ = s.producer.Send(ctx, orderID, event)
+	if err := s.producer.Send(ctx, orderID, event); err != nil {
+		s.metrics.IncError("create_order", metrics.ErrorTypeKafka)
+	}
 
 	s.metrics.OnOrderCreated(float64(totalPrice / 100))
 
@@ -122,9 +151,11 @@ type GetOrderResult struct {
 func (s *CustomerService) GetOrder(ctx context.Context, userID, orderID string) (*GetOrderResult, error) {
 	belongs, err := s.pgRepo.CheckOrderBelongsToUser(ctx, orderID, userID)
 	if err != nil {
+		s.metrics.IncError("get_order", metrics.ErrorTypeValidation)
 		return nil, status.Errorf(codes.Internal, "check order belongs: %v", err)
 	}
 	if !belongs {
+		s.metrics.IncError("get_order", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.PermissionDenied, "order does not belong to user")
 	}
 
@@ -132,8 +163,10 @@ func (s *CustomerService) GetOrder(ctx context.Context, userID, orderID string) 
 	orderWithItems, err := s.pgRepo.GetOrderWithItems(ctx, orderID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
+			s.metrics.IncError("get_order", metrics.ErrorTypeNotFound)
 			return nil, status.Error(codes.NotFound, "order not found")
 		}
+		s.metrics.IncError("get_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "get order: %v", err)
 	}
 
@@ -170,9 +203,11 @@ type CancelOrderResult struct {
 func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID string) (*CancelOrderResult, error) {
 	belongs, err := s.pgRepo.CheckOrderBelongsToUser(ctx, orderID, userID)
 	if err != nil {
+		s.metrics.IncError("cancel_order", metrics.ErrorTypeValidation)
 		return nil, status.Errorf(codes.Internal, "check order belongs: %v", err)
 	}
 	if !belongs {
+		s.metrics.IncError("cancel_order", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.PermissionDenied, "order does not belong to user")
 	}
 
@@ -180,8 +215,10 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 	order, err := s.pgRepo.GetOrderByID(ctx, orderID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
+			s.metrics.IncError("cancel_order", metrics.ErrorTypeNotFound)
 			return nil, status.Error(codes.NotFound, "order not found")
 		}
+		s.metrics.IncError("cancel_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "get order: %v", err)
 	}
 
@@ -192,6 +229,7 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 
 	// Отменяем заказ
 	if err := s.pgRepo.CancelOrder(ctx, orderID); err != nil {
+		s.metrics.IncError("cancel_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "cancel order: %v", err)
 	}
 
@@ -201,7 +239,7 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 		NewStatus: common_api.OrderStatus_ORDER_STATUS_CANCELLED,
 	}
 	if err := s.producer.Send(ctx, orderID, event); err != nil {
-		// TODO: error metric
+		s.metrics.IncError("cancel_order", metrics.ErrorTypeKafka)
 	}
 
 	s.metrics.OnOrderCancelled()
@@ -216,8 +254,8 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 
 func (s *CustomerService) canCancel(status string) bool {
 	cancellableStatuses := map[string]bool{
-		"created": true,
-		"cooking": true,
+		"created":   true,
+		"confirmed": true,
 	}
 	return cancellableStatuses[status]
 }
@@ -239,11 +277,13 @@ func (s *CustomerService) ListMyOrders(ctx context.Context, userID string, limit
 
 	orders, err := s.pgRepo.ListOrdersByUserID(ctx, userID, limit, offset)
 	if err != nil {
+		s.metrics.IncError("list_orders_by_user_id", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "list orders: %v", err)
 	}
 
 	total, err := s.pgRepo.CountOrdersByUserID(ctx, userID)
 	if err != nil {
+		s.metrics.IncError("list_orders_by_user_id", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "count orders: %v", err)
 	}
 

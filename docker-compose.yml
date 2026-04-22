@@ -140,7 +140,8 @@ services:
     env_file:
       - .env
     environment:
-      - KAFKA_CONSUMER_GROUP=courier-service
+      - KAFKA_CONSUMER_GROUP=courier-service\
+      - KAFKA_CLIENT_ID=1
     depends_on:
       kafka:
         condition: service_healthy
@@ -157,6 +158,7 @@ services:
       - .env
     environment:
       - KAFKA_CONSUMER_GROUP=customer-service
+      - KAFKA_CLIENT_ID=2
     depends_on:
       kafka:
         condition: service_healthy
@@ -173,6 +175,7 @@ services:
      - .env
     environment:
       - KAFKA_CONSUMER_GROUP=restaurant-service
+      - KAFKA_CLIENT_ID=3
     depends_on:
       kafka:
         condition: service_healthy

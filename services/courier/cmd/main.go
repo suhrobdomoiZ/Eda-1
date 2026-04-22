@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -24,18 +25,24 @@ import (
 func main() {
 	cfg := config.Load()
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	// metrics
 	m := metrics.NewMetrics("courier")
 	go func() {
 		http.Handle("/metrics", metrics.Handler())
-		log.Printf("courier metrics server listening on :%s", cfg.Metrics.Port)
-		log.Fatal(http.ListenAndServe(":"+cfg.Metrics.Port, nil))
+		logger.Info("courier metrics server listening", "port", cfg.Metrics.Port)
+		if err := http.ListenAndServe(":"+cfg.Metrics.Port, nil); err != nil {
+			logger.Error("metrics server failed", "error", err) // ← строка 43
+		}
 	}()
 
 	// postgreSQL
 	pgRepo, err := repository.NewPostgresRepo(cfg.Postgres.DSN())
 	if err != nil {
-		log.Fatalf("postgres: %v", err)
+		logger.Error("postgres", "error", err)
 	}
 	defer pgRepo.Close()
 
@@ -45,18 +52,18 @@ func main() {
 	defer producer.Close()
 
 	// service
-	courierSvc := service.NewCourierService(pgRepo, producer, m)
+	courierSvc := service.NewCourierService(pgRepo, producer, m, logger)
 	courierHandler := handlers.NewCourierHandler(courierSvc)
 
 	// Kafka Consumer
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	consumer := kafka.NewConsumer(*kafkaCfg, nil)
+	consumer := kafka.NewConsumer(*kafkaCfg, logger)
 	go func() {
 		consumerHandler := handlers.NewOrderConsumerHandler(courierSvc)
 		if err := consumer.Start(ctx, consumerHandler); err != nil {
-			log.Printf("kafka consumer stopped: %v", err)
+			logger.Info("kafka consumer stopped:", "error", err)
 		}
 	}()
 	defer consumer.Close()
@@ -71,11 +78,13 @@ func main() {
 	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("listen: %v", err)
+		logger.Error("listen failed", "error", err) // ← строка 79
+		os.Exit(1)
 	}
 
-	log.Printf("courier gRPC server listening on %s", addr)
+	logger.Info("courier gRPC server listening", "port", addr)
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("serve: %v", err)
+		logger.Error("serve failed", "error", err) // ← строка 84
+		os.Exit(1)
 	}
 }

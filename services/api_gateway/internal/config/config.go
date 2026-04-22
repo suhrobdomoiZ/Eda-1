@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	HTTP     HTTPConfig
+	Metrics  MetricsConfig
 	Services ServicesConfig
 }
 
@@ -15,6 +16,10 @@ type HTTPConfig struct {
 	Port         string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+}
+
+type MetricsConfig struct {
+	Port string
 }
 
 type ServicesConfig struct {

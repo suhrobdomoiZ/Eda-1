@@ -1,30 +1,107 @@
 stages:
-  - lint
-  - test #TODO:прописать для теста
-  - build #TODO:прописать для сборки
+  - test
+  - build
 
+variables:
+  GO_VERSION: "1.26.1"
+  REGISTRY: $CI_REGISTRY_IMAGE
 
-lint:
-  stage: lint
+# Test Stage
 
-  image: golangci/golangci-lint:v1.60.1
-
-  variables:
-    GIT_DEPTH: 50
-    GO_VERSION: "1.26.1"
-
+test:
+  stage: test
+  image: golang:${GO_VERSION}
   before_script:
     - go mod download
-
   script:
-    - golangci-lint run --new-from-rev=origin/main --timeout=5m
-
-  cache:
-    key: ${CI_COMMIT_REF_SLUG}-lint
+    # Запуск тестов с coverage для всех сервисов
+    - go test -v -race -coverprofile=coverage_auth.out ./services/auth/...
+    - go test -v -race -coverprofile=coverage_customer.out ./services/customer/...
+    - go test -v -race -coverprofile=coverage_courier.out ./services/courier/...
+    - go test -v -race -coverprofile=coverage_restaurant.out ./services/restaurant/...
+    
+    # Проверка покрытия >= 30% для каждого сервиса
+    - |
+      check_coverage() {
+        SERVICE=$1
+        FILE=$2
+        COVERAGE=$(go tool cover -func=$FILE | grep total | awk '{print $3}' | sed 's/%//')
+        if [ -z "$COVERAGE" ]; then
+          echo "$SERVICE: no coverage data"
+          exit 1
+        fi
+        if (( $(echo "$COVERAGE < 30" | bc -l) )); then
+          echo "$SERVICE: coverage $COVERAGE% < 30%"
+          exit 1
+        fi
+        echo "$SERVICE: coverage $COVERAGE% >= 30%"
+      }
+    
+    - apk add --no-cache bc
+    - check_coverage "auth" "coverage_auth.out"
+    - check_coverage "customer" "coverage_customer.out"
+    - check_coverage "courier" "coverage_courier.out"
+    - check_coverage "restaurant" "coverage_restaurant.out"
+    
+    
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.out
     paths:
-      - .cache/golangci-lint
+      - coverage_*.out
+      - coverage.out
+    expire_in: 1 week
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-test
+    paths:
+      - /root/go/pkg/mod
 
-  rules:
-    - when: never
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
+# Build Stage
+
+.build_template:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.0-debug
+    entrypoint: [""]
+  script:
+    - |
+      /kaniko/executor \
+        --context "${CI_PROJECT_DIR}" \
+        --dockerfile "services/${SERVICE}/Dockerfile" \
+        --destination "$REGISTRY/${SERVICE}:${CI_COMMIT_SHORT_SHA}" \
+        --destination "$REGISTRY/${SERVICE}:latest" \
+        --cache=true \
+        --cache-ttl=24h
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+  needs:
+    - test
+
+build:auth:
+  extends: .build_template
+  variables:
+    SERVICE: auth
+
+build:api_gateway:
+  extends: .build_template
+  variables:
+    SERVICE: api_gateway
+
+build:customer:
+  extends: .build_template
+  variables:
+    SERVICE: customer
+
+build:restaurant:
+  extends: .build_template
+  variables:
+    SERVICE: restaurant
+
+build:courier:
+  extends: .build_template
+  variables:
+    SERVICE: courier

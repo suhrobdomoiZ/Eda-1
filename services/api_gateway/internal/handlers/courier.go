@@ -1,12 +1,9 @@
 package handlers
 
 import (
-	"context"
-
 	"github.com/gofiber/fiber/v2"
 
 	courierpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
-	"github.com/suhrobdomoiZ/Eda-1/services/api_gateway/internal/middleware"
 )
 
 type CourierHandler struct {
@@ -19,7 +16,7 @@ func NewCourierHandler(client courierpb.CourierAPIClient) *CourierHandler {
 
 // GET /api/v1/courier/orders/available  [JWT, role=courier]
 func (h *CourierHandler) GetAvailableOrders(c *fiber.Ctx) error {
-	resp, err := h.client.GetAvailableOrders(context.Background(), &courierpb.GetAvailableOrdersRequest{
+	resp, err := h.client.GetAvailableOrders(outgoingCtx(c), &courierpb.GetAvailableOrdersRequest{
 		Limit: int32(c.QueryInt("limit", 20)),
 	})
 	if err != nil {
@@ -30,7 +27,7 @@ func (h *CourierHandler) GetAvailableOrders(c *fiber.Ctx) error {
 
 // POST /api/v1/courier/orders/:order_id/accept  [JWT, role=courier]
 func (h *CourierHandler) AcceptOrder(c *fiber.Ctx) error {
-	resp, err := h.client.AcceptOrder(context.Background(), &courierpb.AcceptOrderRequest{
+	resp, err := h.client.AcceptOrder(outgoingCtx(c), &courierpb.AcceptOrderRequest{
 		OrderId: c.Params("order_id"),
 	})
 	if err != nil {
@@ -41,10 +38,7 @@ func (h *CourierHandler) AcceptOrder(c *fiber.Ctx) error {
 
 // GET /api/v1/courier/orders  [JWT, role=courier]
 func (h *CourierHandler) GetMyOrders(c *fiber.Ctx) error {
-	// courier_id берём из токена — не из запроса
-	resp, err := h.client.GetMyOrders(context.Background(), &courierpb.GetMyOrdersRequest{
-		CourierId: middleware.GetUserID(c),
-	})
+	resp, err := h.client.GetMyOrders(outgoingCtx(c), &courierpb.GetMyOrdersRequest{})
 	if err != nil {
 		return grpcError(c, err)
 	}
@@ -53,7 +47,7 @@ func (h *CourierHandler) GetMyOrders(c *fiber.Ctx) error {
 
 // POST /api/v1/courier/orders/:order_id/pickup  [JWT, role=courier]
 func (h *CourierHandler) PickUpOrder(c *fiber.Ctx) error {
-	resp, err := h.client.PickUpOrder(context.Background(), &courierpb.PickUpOrderRequest{
+	resp, err := h.client.PickUpOrder(outgoingCtx(c), &courierpb.PickUpOrderRequest{
 		OrderId: c.Params("order_id"),
 	})
 	if err != nil {
@@ -64,7 +58,7 @@ func (h *CourierHandler) PickUpOrder(c *fiber.Ctx) error {
 
 // POST /api/v1/courier/orders/:order_id/deliver  [JWT, role=courier]
 func (h *CourierHandler) DeliverOrder(c *fiber.Ctx) error {
-	resp, err := h.client.DeliverOrder(context.Background(), &courierpb.DeliverOrderRequest{
+	resp, err := h.client.DeliverOrder(outgoingCtx(c), &courierpb.DeliverOrderRequest{
 		OrderId: c.Params("order_id"),
 	})
 	if err != nil {

@@ -14,6 +14,7 @@ type Metrics struct {
 	RequestsTotal    *prometheus.CounterVec
 	RequestDuration  *prometheus.HistogramVec
 	RequestsInFlight prometheus.Gauge
+	OccusedErrors    *prometheus.CounterVec
 
 	// Бизнес-метрики
 	OrdersCreated    prometheus.Counter
@@ -53,6 +54,15 @@ func NewMetrics(namespace string) *Metrics {
 				Name:      "requests_in_flight",
 				Help:      "Current number of requests being processed",
 			},
+		),
+
+		OccusedErrors: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: namespace,
+				Name:      "errors_total",
+				Help:      "Total number of errors",
+			},
+			[]string{"method", "error_type"},
 		),
 
 		OrdersCreated: promauto.NewCounter(
@@ -149,3 +159,19 @@ func (m *Metrics) OnOrderCancelled() {
 	m.OrdersCancelled.Inc()
 	m.OrdersInProgress.Dec()
 }
+
+// Увелечение количества ошиок указанного метода
+func (m *Metrics) IncError(method, errorType string) {
+	m.OccusedErrors.WithLabelValues(method, errorType).Inc()
+}
+
+const (
+	ErrorTypeDatabase     = "database"
+	ErrorTypeKafka        = "kafka"
+	ErrorTypeGRPC         = "grpc"
+	ErrorTypeValidation   = "validation"
+	ErrorTypeNotFound     = "not_found"
+	ErrorTypeUnauthorized = "unauthorized"
+	ErrorTypeForbidden    = "forbidden"
+	ErrorTypeInternal     = "internal"
+)

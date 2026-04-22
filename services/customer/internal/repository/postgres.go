@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	_ "github.com/lib/pq"
 )
 
 var ErrNotFound = errors.New("not found")
-var ErrAlreadyExists = errors.New("already exists")
 
 type Order struct {
 	ID           string
@@ -49,9 +47,6 @@ func NewPostgresRepo(dsn string) (*PostgresRepo, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
 	return &PostgresRepo{db: db}, nil
 }
 
@@ -67,17 +62,15 @@ func (r *PostgresRepo) CreateOrder(ctx context.Context, order *Order, items []Or
 	}
 	defer tx.Rollback()
 
-	// Вставляем заказ
 	orderQuery := `
-		INSERT INTO orders (id, user_id, restaurant_id, address, total_price, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		INSERT INTO orders (id, client_id, restaurant_id, address, status)
+		VALUES ($1, $2, $3, $4, $5)`
 
 	_, err = tx.ExecContext(ctx, orderQuery,
 		order.ID,
 		order.UserID,
 		order.RestaurantID,
 		order.Address,
-		order.TotalPrice,
 		order.Status,
 	)
 	if err != nil {
@@ -85,17 +78,15 @@ func (r *PostgresRepo) CreateOrder(ctx context.Context, order *Order, items []Or
 	}
 
 	itemQuery := `
-		INSERT INTO order_items (id, order_id, product_id, name, quantity, price)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		INSERT INTO ordered_products (id, order_id, product_id, count)
+		VALUES ($1, $2, $3, $4)`
 
 	for _, item := range items {
 		_, err = tx.ExecContext(ctx, itemQuery,
 			item.ID,
 			order.ID,
 			item.ProductID,
-			item.Name,
 			item.Quantity,
-			item.Price,
 		)
 		if err != nil {
 			return fmt.Errorf("insert order item: %w", err)
@@ -109,9 +100,19 @@ func (r *PostgresRepo) CreateOrder(ctx context.Context, order *Order, items []Or
 func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order, error) {
 	order := &Order{}
 	query := `
-		SELECT id, user_id, restaurant_id, courier_id, address, total_price, status, created_at, updated_at
-		FROM orders
-		WHERE id = $1`
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.id = $1
+		GROUP BY o.id`
 
 	var courierID sql.NullString
 	err := r.db.QueryRowContext(ctx, query, orderID).Scan(
@@ -137,9 +138,10 @@ func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order
 // Получение позиций заказа
 func (r *PostgresRepo) GetOrderItems(ctx context.Context, orderID string) ([]OrderItem, error) {
 	query := `
-		SELECT id, order_id, product_id, name, quantity, price
-		FROM order_items
-		WHERE order_id = $1`
+		SELECT op.id, op.order_id, op.product_id, p.name, op.count, p.price
+		FROM ordered_products op
+		JOIN products p ON op.product_id = p.id
+		WHERE op.order_id = $1`
 
 	rows, err := r.db.QueryContext(ctx, query, orderID)
 	if err != nil {
@@ -179,12 +181,9 @@ func (r *PostgresRepo) GetOrderWithItems(ctx context.Context, orderID string) (*
 
 // Обновление статуса заказа
 func (r *PostgresRepo) UpdateOrderStatus(ctx context.Context, orderID, status string) error {
-	query := `
-		UPDATE orders
-		SET status = $1, updated_at = $2
-		WHERE id = $3`
+	query := `UPDATE orders SET status = $1 WHERE id = $2`
 
-	result, err := r.db.ExecContext(ctx, query, status, time.Now(), orderID)
+	result, err := r.db.ExecContext(ctx, query, status, orderID)
 	if err != nil {
 		return fmt.Errorf("update order status: %w", err)
 	}
@@ -202,12 +201,9 @@ func (r *PostgresRepo) UpdateOrderStatus(ctx context.Context, orderID, status st
 
 // Назначение курьера на заказ
 func (r *PostgresRepo) UpdateOrderCourier(ctx context.Context, orderID, courierID string) error {
-	query := `
-		UPDATE orders
-		SET courier_id = $1, updated_at = $2
-		WHERE id = $3`
+	query := `UPDATE orders SET courier_id = $1 WHERE id = $2`
 
-	result, err := r.db.ExecContext(ctx, query, courierID, time.Now(), orderID)
+	result, err := r.db.ExecContext(ctx, query, courierID, orderID)
 	if err != nil {
 		return fmt.Errorf("update order courier: %w", err)
 	}
@@ -228,14 +224,21 @@ func (r *PostgresRepo) CancelOrder(ctx context.Context, orderID string) error {
 	return r.UpdateOrderStatus(ctx, orderID, "cancelled")
 }
 
-// Возвращает заказы пользователя с пагинацией
-func (r *PostgresRepo) ListOrdersByUserID(ctx context.Context, userID string, limit, offset int32) ([]Order, error) {
+// Список заказов пользователей с пагинацией
+func (r *PostgresRepo) ListOrdersByUserID(ctx context.Context, userID string, limit, offset int32) ([]OrderListItem, error) {
 	query := `
-		SELECT o.id, COALESCE(r.name, ''), o.status, o.total_price, o.created_at
+		SELECT 
+			o.id, 
+			COALESCE(rp.name, 'Ресторан'), 
+			o.status, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price
 		FROM orders o
-		LEFT JOIN restaurants r ON o.restaurant_id = r.id
-		WHERE o.user_id = $1
-		ORDER BY o.created_at DESC
+		LEFT JOIN restaurant_profiles rp ON o.restaurant_id = rp.user_id
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.client_id = $1
+		GROUP BY o.id, rp.name
+		ORDER BY o.id DESC
 		LIMIT $2 OFFSET $3`
 
 	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
@@ -244,10 +247,10 @@ func (r *PostgresRepo) ListOrdersByUserID(ctx context.Context, userID string, li
 	}
 	defer rows.Close()
 
-	var orders []Order
+	var orders []OrderListItem
 	for rows.Next() {
-		var o Order
-		if err := rows.Scan(&o.ID, &o.RestaurantID, &o.Status, &o.TotalPrice); err != nil {
+		var o OrderListItem
+		if err := rows.Scan(&o.ID, &o.RestaurantName, &o.Status, &o.TotalPrice); err != nil {
 			return nil, fmt.Errorf("scan order: %w", err)
 		}
 		orders = append(orders, o)
@@ -256,28 +259,33 @@ func (r *PostgresRepo) ListOrdersByUserID(ctx context.Context, userID string, li
 	return orders, nil
 }
 
+type OrderListItem struct {
+	ID             string
+	RestaurantName string
+	Status         string
+	TotalPrice     int64
+}
+
 // Общее количество заказов пользователя
 func (r *PostgresRepo) CountOrdersByUserID(ctx context.Context, userID string) (int32, error) {
-	query := `SELECT COUNT(*) FROM orders WHERE user_id = $1`
+	query := `SELECT COUNT(*) FROM orders WHERE client_id = $1`
 
 	var count int32
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count orders: %w", err)
 	}
-
 	return count, nil
 }
 
 // Проверка, что заказ принадлежит пользователю
 func (r *PostgresRepo) CheckOrderBelongsToUser(ctx context.Context, orderID, userID string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM orders WHERE id = $1 AND user_id = $2)`
+	query := `SELECT EXISTS(SELECT 1 FROM orders WHERE id = $1 AND client_id = $2)`
 
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, orderID, userID).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check order belongs to user: %w", err)
 	}
-
 	return exists, nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/auth/internal/repository"
 )
 
@@ -18,17 +19,24 @@ var (
 )
 
 type AuthService struct {
-	pg  repository.PgRepo
-	rdb repository.RedisRepo
-	jwt *JWTService
+	pg      repository.PgRepo
+	rdb     repository.RedisRepo
+	jwt     *JWTService
+	metrics *metrics.Metrics
 }
 
 func NewAuthService(
 	pg repository.PgRepo,
 	rdb repository.RedisRepo,
 	jwt *JWTService,
+	m *metrics.Metrics,
 ) *AuthService {
-	return &AuthService{pg: pg, rdb: rdb, jwt: jwt}
+	return &AuthService{
+		pg:      pg,
+		rdb:     rdb,
+		jwt:     jwt,
+		metrics: m,
+	}
 }
 
 // RegisterResult - то что возвращаем после успешной регистрации
@@ -55,6 +63,7 @@ type RegisterInput struct {
 func (s *AuthService) Register(ctx context.Context, in RegisterInput) (*RegisterResult, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 	if err != nil {
+		s.metrics.IncError("register", metrics.ErrorTypeValidation)
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
@@ -71,6 +80,7 @@ func (s *AuthService) Register(ctx context.Context, in RegisterInput) (*Register
 		if errors.Is(err, repository.ErrAlreadyExists) {
 			return nil, ErrUserAlreadyExists
 		}
+		s.metrics.IncError("register", metrics.ErrorTypeDatabase)
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
@@ -83,6 +93,7 @@ func (s *AuthService) Register(ctx context.Context, in RegisterInput) (*Register
 			Address: in.RestaurantAddress,
 			Phone:   in.RestaurantPhone,
 		}); err != nil {
+			s.metrics.IncError("register", metrics.ErrorTypeDatabase)
 			return nil, fmt.Errorf("create restaurant profile: %w", err)
 		}
 	case "courier":
@@ -91,6 +102,7 @@ func (s *AuthService) Register(ctx context.Context, in RegisterInput) (*Register
 			Name:   in.CourierName,
 			Phone:  in.CourierPhone,
 		}); err != nil {
+			s.metrics.IncError("register", metrics.ErrorTypeDatabase)
 			return nil, fmt.Errorf("create courier profile: %w", err)
 		}
 	}
@@ -111,6 +123,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*Lo
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrInvalidCredentials
 		}
+		s.metrics.IncError("login", metrics.ErrorTypeDatabase)
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
@@ -137,6 +150,7 @@ func (s *AuthService) ValidateToken(_ context.Context, tokenStr string) (*Claims
 	// применяется только к refresh токену.
 	claims, err := s.jwt.ParseToken(tokenStr)
 	if err != nil {
+		s.metrics.IncError("validate_token", metrics.ErrorTypeValidation)
 		return nil, err
 	}
 	return claims, nil
@@ -146,6 +160,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) 
 	// Шаг 1: проверить подпись и срок
 	claims, err := s.jwt.ParseToken(refreshTokenStr)
 	if err != nil {
+		s.metrics.IncError("refresh_token", metrics.ErrorTypeValidation)
 		return nil, ErrInvalidCredentials
 	}
 
@@ -155,6 +170,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) 
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrInvalidCredentials
 		}
+		s.metrics.IncError("refresh_token", metrics.ErrorTypeDatabase)
 		return nil, fmt.Errorf("check refresh token: %w", err)
 	}
 
@@ -165,6 +181,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshTokenStr string) 
 
 	// Шаг 3: ротация - старый удаляем, выдаём новую пару
 	if err := s.rdb.DeleteRefreshToken(ctx, userID, refreshTokenStr); err != nil {
+		s.metrics.IncError("refresh_token", metrics.ErrorTypeDatabase)
 		return nil, fmt.Errorf("delete old refresh token: %w", err)
 	}
 
@@ -186,6 +203,7 @@ func (s *AuthService) GetProfile(ctx context.Context, userID string) (*repositor
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, nil, nil, ErrUserNotFound
 		}
+		s.metrics.IncError("get_profile", metrics.ErrorTypeDatabase)
 		return nil, nil, nil, fmt.Errorf("get user: %w", err)
 	}
 
@@ -193,12 +211,14 @@ func (s *AuthService) GetProfile(ctx context.Context, userID string) (*repositor
 	case "restaurant":
 		rp, err := s.pg.GetRestaurantProfile(ctx, userID)
 		if err != nil {
+			s.metrics.IncError("get_profile", metrics.ErrorTypeDatabase)
 			return user, nil, nil, nil // профиль мог не создаться - не роняем сервис
 		}
 		return user, rp, nil, nil
 	case "courier":
 		cp, err := s.pg.GetCourierProfile(ctx, userID)
 		if err != nil {
+			s.metrics.IncError("get_profile", metrics.ErrorTypeDatabase)
 			return user, nil, nil, nil
 		}
 		return user, nil, cp, nil
@@ -211,15 +231,18 @@ func (s *AuthService) GetProfile(ctx context.Context, userID string) (*repositor
 func (s *AuthService) issueTokens(ctx context.Context, userID, role string) (*RegisterResult, error) {
 	accessToken, err := s.jwt.GenerateAccessToken(userID, role)
 	if err != nil {
+		s.metrics.IncError("issu_tokens", metrics.ErrorTypeInternal)
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
 	refreshToken, err := s.jwt.GenerateRefreshToken(userID, role)
 	if err != nil {
+		s.metrics.IncError("issu_tokens", metrics.ErrorTypeInternal)
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
 	if err := s.rdb.SaveRefreshToken(ctx, userID, refreshToken, s.jwt.RefreshTTL()); err != nil {
+		s.metrics.IncError("issu_tokens", metrics.ErrorTypeInternal)
 		return nil, fmt.Errorf("save refresh token: %w", err)
 	}
 

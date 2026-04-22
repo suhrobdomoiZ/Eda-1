@@ -65,7 +65,7 @@ func (r *Restaurant) UpdateProductInMenu(ctx context.Context, product *models.Fu
 	SET
     name = $2,
     description = $3,
-    price = $4,
+    price = $4
     WHERE id = $1 AND restaurant_id = $5;
 	`
 	_, err := r.pool.Exec(
@@ -237,22 +237,20 @@ func (r *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderI
 
 func (r *Restaurant) ListOrders(ctx context.Context, restaurantId *models.RestaurantId) ([]models.Order, error) {
 	query := `
-	SELECT
-    o.id AS order_id,
-    o.client_id,
-    o.courier_id,
-    o.address,
-    o.status,
-    op.id AS ordered_product_id,
-    op.count,
-    p.id AS product_id,
-    p.name AS product_name,
-    p.price AS product_price,
-    op.order_id AS order_id_of_product
-	FROM ordered_products op
-    	INNER JOIN orders o ON op.order_id = o.id AND o.restaurant_id = $1
-    	INNER JOIN products p ON op.product_id = p.id
-	ORDER BY op.id;
+		SELECT
+			o.id AS order_id,
+			o.client_id,
+			o.courier_id,
+			o.address,
+			o.status,
+			op.count,
+			p.id AS product_id,
+			p.name AS product_name,
+			p.price AS product_price
+		FROM ordered_products op
+		INNER JOIN orders o ON op.order_id = o.id AND o.restaurant_id = $1
+		INNER JOIN products p ON op.product_id = p.id
+		ORDER BY o.id
 	`
 
 	rows, err := r.pool.Query(ctx, query, restaurantId.Id)
@@ -265,21 +263,27 @@ func (r *Restaurant) ListOrders(ctx context.Context, restaurantId *models.Restau
 
 	for rows.Next() {
 		var (
-			orderID     uuid.UUID
-			clientID    uuid.UUID
-			courierID   *uuid.UUID
-			address     string
-			statusStr   string
-			prodID      uuid.UUID
-			prodQty     int32
-			prodName    string
-			prodPrice   int64
-			prodOrderID uuid.UUID
+			orderID   uuid.UUID
+			clientID  uuid.UUID
+			courierID *uuid.UUID
+			address   string
+			statusStr string
+			prodQty   int32
+			prodID    uuid.UUID
+			prodName  string
+			prodPrice int64
 		)
 
 		if err := rows.Scan(
-			&orderID, &clientID, &courierID, &address, &statusStr,
-			&prodID, &prodQty, &prodName, &prodPrice, &prodOrderID,
+			&orderID,
+			&clientID,
+			&courierID,
+			&address,
+			&statusStr,
+			&prodQty,
+			&prodID,
+			&prodName,
+			&prodPrice,
 		); err != nil {
 			return nil, fmt.Errorf("repository.ListOrders scan: %w", err)
 		}
@@ -303,7 +307,7 @@ func (r *Restaurant) ListOrders(ctx context.Context, restaurantId *models.Restau
 		order.OrderedItems = append(order.OrderedItems, models.OrderedProduct{
 			ProductId: prodID,
 			Name:      prodName,
-			OrderId:   prodOrderID,
+			OrderId:   orderID,
 			Price:     prodPrice,
 			Quantity:  prodQty,
 		})
@@ -327,22 +331,21 @@ func (r *Restaurant) ListOrders(ctx context.Context, restaurantId *models.Restau
 }
 
 func (r *Restaurant) ListRestaurants(ctx context.Context, limit, offset int32) ([]models.RestaurantInfo, int32, error) {
-	// Получаем общее количество
+	// Количество ресторанов
 	var total int32
-	countQuery := `SELECT COUNT(*) FROM restaurants`
-
-	// pgx использует QueryRow без "Context" в названии
-	err := r.pool.QueryRow(ctx, countQuery).Scan(&total)
-	if err != nil {
+	countQuery := `SELECT COUNT(*) FROM users WHERE role = 'restaurant'`
+	if err := r.pool.QueryRow(ctx, countQuery).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count restaurants: %w", err)
 	}
 
-	// Получаем список
+	// Список ресторанов с профилями
 	query := `
-		SELECT id, name, address, phone, cuisine, rating, is_open
-		FROM restaurants
-		ORDER BY name ASC
-		LIMIT $1 OFFSET $2`
+        SELECT u.id, rp.name, rp.address, rp.phone, '' as cuisine, 0 as rating, true as is_open
+        FROM users u
+        JOIN restaurant_profiles rp ON u.id = rp.user_id
+        WHERE u.role = 'restaurant'
+        ORDER BY rp.name ASC
+        LIMIT $1 OFFSET $2`
 
 	rows, err := r.pool.Query(ctx, query, limit, offset)
 	if err != nil {
@@ -352,13 +355,13 @@ func (r *Restaurant) ListRestaurants(ctx context.Context, limit, offset int32) (
 
 	var restaurants []models.RestaurantInfo
 	for rows.Next() {
-		var r models.RestaurantInfo
+		var info models.RestaurantInfo
 		var id string
-		if err := rows.Scan(&id, &r.Name, &r.Address, &r.Phone, &r.Cuisine, &r.Rating, &r.IsOpen); err != nil {
+		if err := rows.Scan(&id, &info.Name, &info.Address, &info.Phone, &info.Cuisine, &info.Rating, &info.IsOpen); err != nil {
 			return nil, 0, fmt.Errorf("scan restaurant: %w", err)
 		}
-		r.ID = uuid.MustParse(id)
-		restaurants = append(restaurants, r)
+		info.ID = uuid.MustParse(id)
+		restaurants = append(restaurants, info)
 	}
 
 	return restaurants, total, nil

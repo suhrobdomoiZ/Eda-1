@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	_ "github.com/lib/pq"
 )
 
 var ErrNotFound = errors.New("not found")
-var ErrAlreadyExists = errors.New("already exists")
 
 type Order struct {
 	ID           string
@@ -35,9 +33,6 @@ func NewPostgresRepo(dsn string) (*PostgresRepo, error) {
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
 	return &PostgresRepo{db: db}, nil
 }
 
@@ -49,9 +44,19 @@ func (r *PostgresRepo) Close() error {
 func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order, error) {
 	order := &Order{}
 	query := `
-		SELECT id, user_id, restaurant_id, courier_id, address, total_price, status, created_at, updated_at
-		FROM orders
-		WHERE id = $1`
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.id = $1
+		GROUP BY o.id`
 
 	var courierID sql.NullString
 	err := r.db.QueryRowContext(ctx, query, orderID).Scan(
@@ -77,10 +82,20 @@ func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order
 // Заказы со статусом 'ready' без назначенного курьера
 func (r *PostgresRepo) ListAvailableOrders(ctx context.Context, limit, offset int32) ([]Order, error) {
 	query := `
-		SELECT id, user_id, restaurant_id, courier_id, address, total_price, status, created_at, updated_at
-		FROM orders
-		WHERE status = 'ready' AND (courier_id IS NULL OR courier_id = '')
-		ORDER BY created_at ASC
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.status = 'ready' AND o.courier_id IS NULL
+		GROUP BY o.id
+		ORDER BY o.id ASC
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.QueryContext(ctx, query, limit, offset)
@@ -113,14 +128,13 @@ func (r *PostgresRepo) ListAvailableOrders(ctx context.Context, limit, offset in
 
 // Количество доступных заказов
 func (r *PostgresRepo) CountAvailableOrders(ctx context.Context) (int32, error) {
-	query := `SELECT COUNT(*) FROM orders WHERE status = 'ready' AND (courier_id IS NULL OR courier_id = '')`
+	query := `SELECT COUNT(*) FROM orders WHERE status = 'ready' AND courier_id IS NULL`
 
 	var count int32
 	err := r.db.QueryRowContext(ctx, query).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count available orders: %w", err)
 	}
-
 	return count, nil
 }
 
@@ -128,8 +142,8 @@ func (r *PostgresRepo) CountAvailableOrders(ctx context.Context) (int32, error) 
 func (r *PostgresRepo) AssignCourierToOrder(ctx context.Context, orderID, courierID string) error {
 	query := `
 		UPDATE orders
-		SET courier_id = $1, status = 'delivering', updated_at = $2
-		WHERE id = $3 AND status = 'ready' AND (courier_id IS NULL OR courier_id = '')`
+		SET courier_id = $1, status = 'delivering'
+		WHERE id = $2 AND status = 'ready' AND courier_id IS NULL`
 
 	result, err := r.db.ExecContext(ctx, query, courierID, orderID)
 	if err != nil {
@@ -141,9 +155,8 @@ func (r *PostgresRepo) AssignCourierToOrder(ctx context.Context, orderID, courie
 		return fmt.Errorf("rows affected: %w", err)
 	}
 	if rows == 0 {
-		return ErrNotFound // Заказ уже занят или не в статусе ready
+		return ErrNotFound
 	}
-
 	return nil
 }
 
@@ -154,19 +167,28 @@ func (r *PostgresRepo) CheckOrderAssignedToCourier(ctx context.Context, orderID,
 	var exists bool
 	err := r.db.QueryRowContext(ctx, query, orderID, courierID).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("check order assigned to courier: %w", err)
+		return false, fmt.Errorf("check order assigned: %w", err)
 	}
-
 	return exists, nil
 }
 
 // Все заказы курьера
 func (r *PostgresRepo) ListOrdersByCourier(ctx context.Context, courierID string, limit, offset int32) ([]Order, error) {
 	query := `
-		SELECT id, user_id, restaurant_id, courier_id, address, total_price, status, created_at, updated_at
-		FROM orders
-		WHERE courier_id = $1
-		ORDER BY created_at DESC
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.courier_id = $1
+		GROUP BY o.id
+		ORDER BY o.id DESC
 		LIMIT $2 OFFSET $3`
 
 	rows, err := r.db.QueryContext(ctx, query, courierID, limit, offset)
@@ -193,7 +215,6 @@ func (r *PostgresRepo) ListOrdersByCourier(ctx context.Context, courierID string
 		o.CourierID = cID
 		orders = append(orders, o)
 	}
-
 	return orders, nil
 }
 
@@ -206,7 +227,6 @@ func (r *PostgresRepo) CountOrdersByCourier(ctx context.Context, courierID strin
 	if err != nil {
 		return 0, fmt.Errorf("count courier orders: %w", err)
 	}
-
 	return count, nil
 }
 
@@ -216,23 +236,20 @@ func (r *PostgresRepo) CountActiveOrdersByCourier(ctx context.Context, courierID
 		SELECT COUNT(*)
 		FROM orders
 		WHERE courier_id = $1
-		  AND status IN ('assigned', 'picked_up', 'delivering')`
+		  	AND status = 'delivering'
+	`
 
 	var count int32
 	err := r.db.QueryRowContext(ctx, query, courierID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count active orders: %w", err)
 	}
-
 	return count, nil
 }
 
 // Обновление статус заказа
 func (r *PostgresRepo) UpdateOrderStatus(ctx context.Context, orderID, status string) error {
-	query := `
-		UPDATE orders
-		SET status = $1, updated_at = $2
-		WHERE id = $3`
+	query := `UPDATE orders SET status = $1 WHERE id = $2`
 
 	result, err := r.db.ExecContext(ctx, query, status, orderID)
 	if err != nil {
@@ -246,7 +263,6 @@ func (r *PostgresRepo) UpdateOrderStatus(ctx context.Context, orderID, status st
 	if rows == 0 {
 		return ErrNotFound
 	}
-
 	return nil
 }
 
@@ -262,9 +278,10 @@ type OrderItem struct {
 
 func (r *PostgresRepo) GetOrderItems(ctx context.Context, orderID string) ([]OrderItem, error) {
 	query := `
-		SELECT id, order_id, product_id, name, quantity, price
-		FROM order_items
-		WHERE order_id = $1`
+		SELECT op.id, op.order_id, op.product_id, p.name, op.count, p.price
+		FROM ordered_products op
+		JOIN products p ON op.product_id = p.id
+		WHERE op.order_id = $1`
 
 	rows, err := r.db.QueryContext(ctx, query, orderID)
 	if err != nil {
@@ -280,6 +297,5 @@ func (r *PostgresRepo) GetOrderItems(ctx context.Context, orderID string) ([]Ord
 		}
 		items = append(items, item)
 	}
-
 	return items, nil
 }

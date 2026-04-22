@@ -25,22 +25,55 @@ var (
 	ErrTooManyActive     = errors.New("courier has too many active orders")
 )
 
+type CourierRepository interface {
+	GetOrderByID(ctx context.Context, orderID string) (*repository.Order, error)
+	ListAvailableOrders(ctx context.Context, limit, offset int32) ([]repository.Order, error)
+	CountAvailableOrders(ctx context.Context) (int32, error)
+	AssignCourierToOrder(ctx context.Context, orderID, courierID string) error
+	CheckOrderAssignedToCourier(ctx context.Context, orderID, courierID string) (bool, error)
+	ListOrdersByCourier(ctx context.Context, courierID string, limit, offset int32) ([]repository.Order, error)
+	CountOrdersByCourier(ctx context.Context, courierID string) (int32, error)
+	CountActiveOrdersByCourier(ctx context.Context, courierID string) (int32, error)
+	UpdateOrderStatus(ctx context.Context, orderID, status string) error
+	GetOrderItems(ctx context.Context, orderID string) ([]repository.OrderItem, error)
+	Close() error
+}
+
+type Producer interface {
+	Send(ctx context.Context, key string, payload any) error
+	Close() error
+}
+
+type Metrics interface {
+	IncError(method, errorType string)
+	OnOrderPickUp()
+	OnOrderDelivered()
+}
+
+type Logger interface {
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
 type CourierService struct {
 	pb.UnimplementedCourierAPIServer
-	pgRepo   *repository.PostgresRepo
-	producer *kafka.Producer
-	metrics  *metrics.Metrics
+	pgRepo   CourierRepository
+	producer Producer
+	metrics  Metrics
+	logger   Logger
 }
 
 func NewCourierService(
-	pgRepo *repository.PostgresRepo,
-	p *kafka.Producer,
-	m *metrics.Metrics,
+	pgRepo CourierRepository,
+	p Producer,
+	m Metrics,
+	logger Logger,
 ) *CourierService {
 	return &CourierService{
 		pgRepo:   pgRepo,
 		producer: p,
 		metrics:  m,
+		logger:   logger,
 	}
 }
 
@@ -59,6 +92,7 @@ func (s *CourierService) GetAvailableOrders(ctx context.Context, courierID strin
 
 	orders, err := s.pgRepo.ListAvailableOrders(ctx, limit, 0)
 	if err != nil {
+		s.metrics.IncError("list_available_orders", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "list available orders: %v", err)
 	}
 
@@ -102,6 +136,7 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 	// Проверяем, что у курьера нет слишком много активных заказов
 	activeCount, err := s.pgRepo.CountActiveOrdersByCourier(ctx, courierID)
 	if err != nil {
+		s.metrics.IncError("accept_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "count active orders: %v", err)
 	}
 	if activeCount >= 3 {
@@ -112,14 +147,17 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 	err = s.pgRepo.AssignCourierToOrder(ctx, orderID, courierID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
+			s.metrics.IncError("accept_order", metrics.ErrorTypeDatabase)
 			return nil, status.Error(codes.NotFound, "order not available")
 		}
+		s.metrics.IncError("accept_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "assign courier: %v", err)
 	}
 
 	// Получаем полную информацию о заказе
 	order, err := s.pgRepo.GetOrderByID(ctx, orderID)
 	if err != nil {
+		s.metrics.IncError("accept_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "get order: %v", err)
 	}
 
@@ -145,11 +183,13 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 		Status:       common_api.OrderStatus_ORDER_STATUS_DELIVERING,
 	}
 	event := kafka.ChangeOrderStatusEvent{
-		OrderId: uuid.MustParse(orderID),
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERING,
 	}
 	if err := s.producer.Send(ctx, orderID, event); err != nil {
-		// TODO: error metric
+		s.metrics.IncError("accept_order", metrics.ErrorTypeKafka)
 	}
+	s.logger.Info("AcceptOrder success", "order_id", orderID)
 
 	return &AcceptOrderResult{
 		Success: true,
@@ -165,6 +205,7 @@ type GetMyOrdersResult struct {
 func (s *CourierService) GetMyOrders(ctx context.Context, courierID string) (*GetMyOrdersResult, error) {
 	orders, err := s.pgRepo.ListOrdersByCourier(ctx, courierID, 100, 0)
 	if err != nil {
+		s.metrics.IncError("list_orders_by_courier", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "list courier orders: %v", err)
 	}
 
@@ -208,15 +249,18 @@ func (s *CourierService) PickUpOrder(ctx context.Context, courierID, orderID str
 	// Проверяем, что заказ назначен этому курьеру
 	belongs, err := s.pgRepo.CheckOrderAssignedToCourier(ctx, orderID, courierID)
 	if err != nil {
+		s.metrics.IncError("pick_up_order", metrics.ErrorTypeValidation)
 		return nil, status.Errorf(codes.Internal, "check order assignment: %v", err)
 	}
 	if !belongs {
+		s.metrics.IncError("pick_up_order", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.PermissionDenied, ErrOrderNotAssigned.Error())
 	}
 
 	// Проверяем статус заказа
 	order, err := s.pgRepo.GetOrderByID(ctx, orderID)
 	if err != nil {
+		s.metrics.IncError("pick_up_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "get order: %v", err)
 	}
 	if order.Status != "delivering" {
@@ -225,15 +269,8 @@ func (s *CourierService) PickUpOrder(ctx context.Context, courierID, orderID str
 
 	// Обновляем статус на 'delivering'
 	if err := s.pgRepo.UpdateOrderStatus(ctx, orderID, "delivering"); err != nil {
+		s.metrics.IncError("pick_up_order", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "update order status: %v", err)
-	}
-
-	event := kafka.ChangeOrderStatusEvent{
-		OrderId:   uuid.MustParse(orderID),
-		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERING,
-	}
-	if err := s.producer.Send(ctx, orderID, event); err != nil {
-		// TODO: error metric
 	}
 
 	s.metrics.OnOrderPickUp()
@@ -255,23 +292,28 @@ func (s *CourierService) DeliverOrder(ctx context.Context, courierID, orderID st
 	// Проверяем, что заказ назначен этому курьеру
 	belongs, err := s.pgRepo.CheckOrderAssignedToCourier(ctx, orderID, courierID)
 	if err != nil {
+		s.metrics.IncError("check_order_assigned_to_courier", metrics.ErrorTypeValidation)
 		return nil, status.Errorf(codes.Internal, "check order assignment: %v", err)
 	}
 	if !belongs {
+		s.metrics.IncError("check_order_assigned_to_courier", metrics.ErrorTypeValidation)
 		return nil, status.Error(codes.PermissionDenied, ErrOrderNotAssigned.Error())
 	}
 
 	// Проверяем статус заказа
 	order, err := s.pgRepo.GetOrderByID(ctx, orderID)
 	if err != nil {
+		s.metrics.IncError("check_order_assigned_to_courier", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "get order: %v", err)
 	}
-	if order.Status != "picked_up" {
-		return nil, status.Error(codes.FailedPrecondition, "order must be picked up before delivery")
+	if order.Status != "delivering" {
+		s.metrics.IncError("check_order_assigned_to_courier", metrics.ErrorTypeDatabase)
+		return nil, status.Error(codes.FailedPrecondition, "order must be in delivering before delivery")
 	}
 
 	// Обновляем статус на 'delivered'
 	if err := s.pgRepo.UpdateOrderStatus(ctx, orderID, "delivered"); err != nil {
+		s.metrics.IncError("check_order_assigned_to_courier", metrics.ErrorTypeDatabase)
 		return nil, status.Errorf(codes.Internal, "update order status: %v", err)
 	}
 
@@ -286,7 +328,7 @@ func (s *CourierService) DeliverOrder(ctx context.Context, courierID, orderID st
 		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERED,
 	}
 	if err := s.producer.Send(ctx, orderID, event); err != nil {
-		// TODO: error metric
+		s.metrics.IncError("check_order_assigned_to_courier", metrics.ErrorTypeKafka)
 	}
 
 	s.metrics.OnOrderDelivered()

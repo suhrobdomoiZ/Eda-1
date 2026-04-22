@@ -11,5 +11,5 @@ RUN go build -o main ./services/customer/cmd/main.go
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/main .
-EXPOSE 8083
+EXPOSE 9005
 CMD ["./main"]

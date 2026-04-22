@@ -1,12 +1,14 @@
 package middleware_test
 
 import (
+	"context"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc"
 
 	authpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/auth"
 	commonpb "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
@@ -17,13 +19,55 @@ type mockAuthClient struct {
 	mock.Mock
 }
 
-func (m *mockAuthClient) ValidateToken(ctx interface{}, req *authpb.ValidateTokenRequest, opts ...interface{}) (*authpb.ValidateTokenResponse, error) {
-	args := m.Called(req.AccessToken)
+func (m *mockAuthClient) Register(ctx context.Context, in *authpb.RegisterRequest, opts ...grpc.CallOption) (*authpb.RegisterResponse, error) {
+	args := m.Called(in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authpb.RegisterResponse), args.Error(1)
+}
+
+func (m *mockAuthClient) Login(ctx context.Context, in *authpb.LoginRequest, opts ...grpc.CallOption) (*authpb.LoginResponse, error) {
+	args := m.Called(in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authpb.LoginResponse), args.Error(1)
+}
+
+func (m *mockAuthClient) ValidateToken(ctx context.Context, in *authpb.ValidateTokenRequest, opts ...grpc.CallOption) (*authpb.ValidateTokenResponse, error) {
+	args := m.Called(in.AccessToken)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*authpb.ValidateTokenResponse), args.Error(1)
 }
+
+func (m *mockAuthClient) RefreshToken(ctx context.Context, in *authpb.RefreshTokenRequest, opts ...grpc.CallOption) (*authpb.RefreshTokenResponse, error) {
+	args := m.Called(in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authpb.RefreshTokenResponse), args.Error(1)
+}
+
+func (m *mockAuthClient) Logout(ctx context.Context, in *authpb.LogoutRequest, opts ...grpc.CallOption) (*authpb.LogoutResponse, error) {
+	args := m.Called(in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authpb.LogoutResponse), args.Error(1)
+}
+
+func (m *mockAuthClient) GetProfile(ctx context.Context, in *authpb.GetProfileRequest, opts ...grpc.CallOption) (*authpb.GetProfileResponse, error) {
+	args := m.Called(in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*authpb.GetProfileResponse), args.Error(1)
+}
+
+// helpers
 
 func newMiddlewareApp(client authpb.AuthServiceClient) *fiber.App {
 	app := fiber.New()
@@ -35,6 +79,8 @@ func newMiddlewareApp(client authpb.AuthServiceClient) *fiber.App {
 	})
 	return app
 }
+
+// Tests
 
 func TestAuthMiddleware_ValidToken(t *testing.T) {
 	client := &mockAuthClient{}
@@ -85,7 +131,6 @@ func TestAuthMiddleware_WrongScheme(t *testing.T) {
 	client := &mockAuthClient{}
 	app := newMiddlewareApp(client)
 
-	// Basic вместо Bearer
 	req := httptest.NewRequest("GET", "/protected", nil)
 	req.Header.Set("Authorization", "Basic sometoken")
 	resp, _ := app.Test(req)
@@ -98,7 +143,6 @@ func TestRequireRole_Correct(t *testing.T) {
 	app := fiber.New()
 	app.Get("/restaurant-only",
 		func(c *fiber.Ctx) error {
-			// симулируем Auth middleware — кладём роль вручную
 			c.Locals("role", commonpb.UserRole_USER_ROLE_RESTAURANT)
 			return c.Next()
 		},
@@ -115,7 +159,7 @@ func TestRequireRole_WrongRole(t *testing.T) {
 	app := fiber.New()
 	app.Get("/restaurant-only",
 		func(c *fiber.Ctx) error {
-			c.Locals("role", commonpb.UserRole_USER_ROLE_CUSTOMER) // клиент
+			c.Locals("role", commonpb.UserRole_USER_ROLE_CUSTOMER)
 			return c.Next()
 		},
 		middleware.RequireRole(commonpb.UserRole_USER_ROLE_RESTAURANT),

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,6 +17,7 @@ import (
 	"github.com/suhrobdomoiZ/Eda-1/pkg/closer"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/config"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
+	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/repository"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
@@ -44,6 +46,15 @@ func main() {
 		Level: slog.LevelInfo,
 	}))
 
+	// metrics
+	metricsPort := config.Key("RESTAURANT_METRICS_PORT").MustGet()
+	m := metrics.NewMetrics("restaurant")
+	go func() {
+		http.Handle("/metrics", metrics.Handler())
+		logger.Info("restaurant metrics server listening", "port", metricsPort)
+		logger.Error(http.ListenAndServe(":"+metricsPort, nil).Error())
+	}()
+
 	clsr := closer.New(*logger)
 
 	dbDSN := buildDSN()
@@ -70,7 +81,7 @@ func main() {
 	})
 
 	repo := repository.NewRestaurant(pool)
-	svc := service.NewRestaurant(repo, producer, logger)
+	svc := service.NewRestaurant(repo, producer, m, logger)
 	grpcHandler := handlers.NewRestaurant(svc)
 
 	consumer := kafka.NewConsumer(*kafkaCfg, logger)
@@ -97,7 +108,9 @@ func main() {
 		_ = lis.Close()
 	})
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(m.UnaryServerInterceptor()),
+	)
 	pb.RegisterRestaurantServer(grpcServer, grpcHandler)
 
 	clsr.Add("grpc server", func(ctx context.Context) error {
