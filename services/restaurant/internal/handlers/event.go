@@ -10,7 +10,7 @@ import (
 	"github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	"github.com/suhrobdomoiZ/Eda-1/pkg/kafka"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
-	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
+	service "github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/services"
 )
 
 func NewOrderConsumerHandler(svc *service.Restaurant, logger *slog.Logger) func(ctx context.Context, key string, value []byte) error {

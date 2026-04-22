@@ -152,34 +152,119 @@ Menu management and order processing for restaurant owners.
 - Publish order status changes to Kafka
 - List all restaurants (public endpoint)
 
-#### Menu Management
+#### Restaurant API Endpoints
 
-Method	                  Description	Access
-POST /menu	              Add product	Restaurant only
-PUT /menu/:id	            Update product	Restaurant only
-DELETE /menu/:id	Delete product	Restaurant only
-GET /menu/:restaurant_id	List products	Public
-GET /restaurants	List all restaurants	Public
+| Method | Description | Access |
+| ------ | ----------- | ------ |
+| POST /menu | Add product | Restaurant only |
+| PUT /menu/:id | Update product | Restaurant only |
+| DELETE /menu/:id | Delete product | Restaurant only |
+| GET /menu/:restaurant_id | List products | Public |
+| GET /restaurants | List all restaurants | Public |
 
-Order Processing Flow
-Receives ORDER_CREATED event from Kafka (customer created order)
+#### Order Processing Flow
 
-Restaurant views order → changes status to cooking
+1. Receives ORDER_CREATED event from Kafka (customer created order)
+2. Restaurant views order → changes status to cooking
+3. When ready → changes status to ready
+4. Publishes ORDER_READY event to Kafka
+5. Courier service picks up the order
 
-When ready → changes status to ready
+#### Restaurant Database Tables
 
-Publishes ORDER_READY event to Kafka
-
-Courier service picks up the order
-
-Database Tables
-products — menu items with price, description, availability
-
-restaurant_profiles — extended restaurant info (name, address, phone)
+- products — menu items with price, description, availability
+- restaurant_profiles — extended restaurant info (name, address, phone)
 
 ### Customer (:9005)
 
+Order management for customers.
+
+#### Customer Responsibilities
+
+- Create new orders
+- View order history
+- Cancel orders (only before cooking starts)
+- Publish order events to Kafka
+
+#### Order Lifecycle (Customer View)
+
+| Status | Description | Can Cancel? |
+| ------ | ----------- | ----------- |
+| created | Order placed, waiting for restaurant | Yes |
+| confirmed | Restaurant accepted | Yes |
+| cooking | Restaurant started cooking | No |
+| ready | Waiting for courier | No |
+| delivering | Courier on the way | No |
+| delivered | Order completed | No |
+| cancelled | Order cancelled | Already cancelled |
+
+#### Customer API Endpoints
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| POST | /orders | Create order |
+| GET | /orders | List my orders (with pagination) |
+| GET | /orders/:id | Get order details |
+| DELETE | /orders/:id | Cancel order |
+
+#### Create Order Flow
+
+1. Customer sends `restaurant_id`, `items[]`, `address`
+2. Service calculates total price
+3. Creates order with status created
+4. Publishes `ORDER_CREATED` event to Kafka
+5. Returns `order_id`
+
+#### Cancel Order Flow
+
+1. Checks order belongs to user
+2. Verifies order status is cancellable (created or confirmed)
+3. Updates status to cancelled
+4. Publishes ORDER_CANCELLED event to Kafka
+5. Returns refund amount
+
 ### Courier (:9006)
+
+Delivery management for couriers.
+
+#### Courier Responsibilities
+
+- View available orders (status = ready)
+- Accept order (assign to courier)
+- Mark order as picked up from restaurant
+- Mark order as delivered to customer
+- View delivery history and earnings
+- Publish delivery status updates to Kafka
+
+#### Courier Order Flow
+
+| Step | Action | Status Change | Kafka Event |
+| ---- | ------ | ------------- | ----------- |
+| 1 | View available | ready | — |
+| 2 | Accept order | ready → delivering | ORDER_DELIVERING |
+| 3 | Pick up from restaurant | delivering → picked_up | ORDER_PICKED_UP |
+| 4 | Deliver to customer | picked_up → delivered | ORDER_DELIVERED |
+
+#### Active Orders Limit
+
+- Maximum 3 active orders per courier
+- Active = delivering
+- Prevents overloading
+
+#### Courier API Endpoints
+
+| Method | Path | Description |
+| GET | /orders/available | List available orders (ready) |
+| POST | /orders/:id/accept | Accept order |
+| GET | /orders | My orders (history + active) |
+| POST | /orders/:id/pickup | Mark as picked up |
+| POST | /orders/:id/deliver | Mark as delivered (returns earnings) |
+
+#### Courier Database Tables
+
+- Uses shared orders table
+- courier_id field links order to courier
+- courier_profiles — extended courier info (name, phone)
 
 ## Metrics
 
@@ -200,9 +285,9 @@ For now the metrics are:
 
 And more can be easily added on your purpose.
 
-## DB description
-
 ## Testing
+
+Tested via CI/CD Gitlab feature (check `.gitlab-cy.yml`)
 
 ## End-to-End Api Flow
 
@@ -392,5 +477,3 @@ json
   "refresh_token": "<refresh_token>"
 }
 ```
-
----

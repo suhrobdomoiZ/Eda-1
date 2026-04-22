@@ -5,7 +5,7 @@ import (
 
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/models"
-	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
+	service "github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/services"
 	"github.com/suhrobdomoiZ/Eda-1/services/utils"
 )
 

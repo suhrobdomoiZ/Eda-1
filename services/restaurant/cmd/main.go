@@ -20,7 +20,7 @@ import (
 	metrics "github.com/suhrobdomoiZ/Eda-1/pkg/metrics"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/handlers"
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/repository"
-	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/service"
+	service "github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/services"
 	"google.golang.org/grpc"
 )
 
