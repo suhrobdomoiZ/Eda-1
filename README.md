@@ -1,3 +1,41 @@
+# Eda Top 1
+
+## Description
+
+Food order and delivery service.
+You can register as customer, restaurant or courier.
+
+## Features
+
+- Orders pool with Kafka
+- Metrics export using Prometheus and Grafana
+- Unite entry point - api_gateway
+- Full deployment with Docker-compose
+- Separated microservices
+
+## Architecture
+
+Client (Web) -> (HTTP)
+-> API Gateway (:8080) -> (gRPC)
+    -> Auth Service (:9001)
+    -> Restaurant Service (:9004)
+    -> Customer Service (:9005)
+    -> Courier Service (:9006)
+        -> PostgreSQL (:5432)
+        -> Kafka (:9092)
+
+## Microservices and endpoints
+
+## API Gateway (:8080)
+
+## Auth (:9001)
+
+## Restaurant (:9004)
+
+## Customer (:9005)
+
+## Courier (:9006)
+
 # Сущности
 ## Users
 - id UUID
