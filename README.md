@@ -137,8 +137,6 @@ Authentication and authorization service (JWT + Refresh Token).
 
 Full system interaction scenarios.
 
----
-
 ## 1. Registration
 
 ### Customer
