@@ -11,23 +11,37 @@ import (
 	"github.com/suhrobdomoiZ/Eda-1/services/restaurant/internal/repository"
 )
 
+type Producer interface {
+	Send(ctx context.Context, key string, payload any) error
+	Close() error
+}
+
+type Metrics interface {
+	IncError(method, errorType string)
+}
+
+type Logger interface {
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
 type Restaurant struct {
 	repo     repository.IRestaurant
-	producer *kafka.Producer
-	logger   *slog.Logger
-	metrics  *metrics.Metrics
+	producer Producer
+	logger   Logger
+	metrics  Metrics
 }
 
 func NewRestaurant(
-	repository repository.IRestaurant,
-	producer *kafka.Producer,
-	m *metrics.Metrics,
-	logger *slog.Logger,
+	repo repository.IRestaurant,
+	producer Producer,
+	metrics Metrics,
+	logger Logger,
 ) *Restaurant {
 	return &Restaurant{
-		repo:     repository,
+		repo:     repo,
 		producer: producer,
-		metrics:  m,
+		metrics:  metrics,
 		logger:   logger,
 	}
 }

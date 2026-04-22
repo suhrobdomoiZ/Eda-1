@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"log/slog"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,19 +25,49 @@ var (
 	ErrTooManyActive     = errors.New("courier has too many active orders")
 )
 
+type CourierRepository interface {
+	GetOrderByID(ctx context.Context, orderID string) (*repository.Order, error)
+	ListAvailableOrders(ctx context.Context, limit, offset int32) ([]repository.Order, error)
+	CountAvailableOrders(ctx context.Context) (int32, error)
+	AssignCourierToOrder(ctx context.Context, orderID, courierID string) error
+	CheckOrderAssignedToCourier(ctx context.Context, orderID, courierID string) (bool, error)
+	ListOrdersByCourier(ctx context.Context, courierID string, limit, offset int32) ([]repository.Order, error)
+	CountOrdersByCourier(ctx context.Context, courierID string) (int32, error)
+	CountActiveOrdersByCourier(ctx context.Context, courierID string) (int32, error)
+	UpdateOrderStatus(ctx context.Context, orderID, status string) error
+	GetOrderItems(ctx context.Context, orderID string) ([]repository.OrderItem, error)
+	Close() error
+}
+
+type Producer interface {
+	Send(ctx context.Context, key string, payload any) error
+	Close() error
+}
+
+type Metrics interface {
+	IncError(method, errorType string)
+	OnOrderPickUp()
+	OnOrderDelivered()
+}
+
+type Logger interface {
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
+}
+
 type CourierService struct {
 	pb.UnimplementedCourierAPIServer
-	pgRepo   *repository.PostgresRepo
-	producer *kafka.Producer
-	metrics  *metrics.Metrics
-	logger   *slog.Logger
+	pgRepo   CourierRepository
+	producer Producer
+	metrics  Metrics
+	logger   Logger
 }
 
 func NewCourierService(
-	pgRepo *repository.PostgresRepo,
-	p *kafka.Producer,
-	m *metrics.Metrics,
-	logger *slog.Logger,
+	pgRepo CourierRepository,
+	p Producer,
+	m Metrics,
+	logger Logger,
 ) *CourierService {
 	return &CourierService{
 		pgRepo:   pgRepo,

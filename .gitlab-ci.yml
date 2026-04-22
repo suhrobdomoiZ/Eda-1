@@ -6,19 +6,44 @@ variables:
   GO_VERSION: "1.26.1"
   REGISTRY: $CI_REGISTRY_IMAGE
 
-
-# Test 
+# Test Stage
 
 test:
   stage: test
-  image: golang:1.26.1
+  image: golang:${GO_VERSION}
   before_script:
     - go mod download
   script:
-    - go test -v -race -coverprofile=coverage.out ./services/auth/...
-    - go test -v -race -coverprofile=coverage_gateway.out ./services/api_gateway/...
-    - go tool cover -func=coverage.out
-    - go tool cover -func=coverage_gateway.out
+    # Запуск тестов с coverage для всех сервисов
+    - go test -v -race -coverprofile=coverage_auth.out ./services/auth/...
+    - go test -v -race -coverprofile=coverage_customer.out ./services/customer/...
+    - go test -v -race -coverprofile=coverage_courier.out ./services/courier/...
+    - go test -v -race -coverprofile=coverage_restaurant.out ./services/restaurant/...
+    
+    # Проверка покрытия >= 30% для каждого сервиса
+    - |
+      check_coverage() {
+        SERVICE=$1
+        FILE=$2
+        COVERAGE=$(go tool cover -func=$FILE | grep total | awk '{print $3}' | sed 's/%//')
+        if [ -z "$COVERAGE" ]; then
+          echo "$SERVICE: no coverage data"
+          exit 1
+        fi
+        if (( $(echo "$COVERAGE < 30" | bc -l) )); then
+          echo "$SERVICE: coverage $COVERAGE% < 30%"
+          exit 1
+        fi
+        echo "$SERVICE: coverage $COVERAGE% >= 30%"
+      }
+    
+    - apk add --no-cache bc
+    - check_coverage "auth" "coverage_auth.out"
+    - check_coverage "customer" "coverage_customer.out"
+    - check_coverage "courier" "coverage_courier.out"
+    - check_coverage "restaurant" "coverage_restaurant.out"
+    
+    
   coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
   artifacts:
     reports:
@@ -26,14 +51,16 @@ test:
         coverage_format: cobertura
         path: coverage.out
     paths:
+      - coverage_*.out
       - coverage.out
-      - coverage_gateway.out
     expire_in: 1 week
   cache:
     key: ${CI_COMMIT_REF_SLUG}-test
     paths:
       - /root/go/pkg/mod
-# Build 
+
+# Build Stage
+
 .build_template:
   stage: build
   image:
@@ -51,8 +78,8 @@ test:
   before_script:
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-
-# Build  
+  needs:
+    - test
 
 build:auth:
   extends: .build_template

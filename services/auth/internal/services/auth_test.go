@@ -155,7 +155,7 @@ func TestRefreshToken_Success(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	svc := services.NewAuthService(pg, rdb, jwt)
+	svc := services.NewAuthService(pg, rdb, jwt, nil)
 
 	refreshToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 
@@ -177,7 +177,7 @@ func TestRefreshToken_NotInRedis(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	svc := services.NewAuthService(pg, rdb, jwt)
+	svc := services.NewAuthService(pg, rdb, jwt, nil)
 
 	refreshToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 
@@ -193,7 +193,7 @@ func TestLogout_Success(t *testing.T) {
 	pg := &mockPgRepo{}
 	rdb := &mockRedisRepo{}
 	jwt := services.NewJWTService("test-secret", 15*time.Minute, 7*24*time.Hour)
-	svc := services.NewAuthService(pg, rdb, jwt)
+	svc := services.NewAuthService(pg, rdb, jwt, nil)
 
 	refreshToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 	rdb.On("DeleteRefreshToken", mock.Anything, "user-1", refreshToken).Return(nil)
@@ -208,7 +208,7 @@ func TestLogout_ExpiredToken_NoError(t *testing.T) {
 	rdb := &mockRedisRepo{}
 
 	jwt := services.NewJWTService("test-secret", -time.Minute, -time.Minute)
-	svc := services.NewAuthService(pg, rdb, jwt)
+	svc := services.NewAuthService(pg, rdb, jwt, nil)
 
 	expiredToken, _ := jwt.GenerateRefreshToken("user-1", "user")
 

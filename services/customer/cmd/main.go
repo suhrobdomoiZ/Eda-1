@@ -35,13 +35,15 @@ func main() {
 	go func() {
 		http.Handle("/metrics", metrics.Handler())
 		logger.Info("customer metrics server listening", "port", cfg.Metrics.Port)
-		logger.Error(http.ListenAndServe(":"+cfg.Metrics.Port, nil).Error())
+		if err := http.ListenAndServe(":"+cfg.Metrics.Port, nil); err != nil {
+			logger.Error("metrics server failed", "error", err)
+		}
 	}()
 
 	// postgreSQL
 	pgRepo, err := repository.NewPostgresRepo(cfg.Postgres.DSN())
 	if err != nil {
-		logger.Error("postgres: %v", err)
+		logger.Error("postgres", "error", err)
 	}
 	defer pgRepo.Close()
 
@@ -77,11 +79,13 @@ func main() {
 	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		logger.Error("listen: %v", err)
+		logger.Error("listen failed", "error", err)
+		os.Exit(1)
 	}
 
 	logger.Info("customer gRPC server listening", "port", addr)
 	if err := grpcServer.Serve(lis); err != nil {
-		logger.Error("serve: %v", err)
+		logger.Error("serve failed", "error", err)
+		os.Exit(1)
 	}
 }

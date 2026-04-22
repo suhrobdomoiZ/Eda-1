@@ -2,8 +2,8 @@
 
 ## Description
 
-Food order and delivery service.
-You can register as customer, restaurant or courier.
+Food order and delivery service built with go microservices.
+You can register as **customer**, **restaurant** or **courier**.
 
 ## Features
 
@@ -14,7 +14,8 @@ You can register as customer, restaurant or courier.
 - Kafka (orders/event streaming)
 - Observability (Prometheus + Grafana)
 - Docker Compose deployment
-
+- JWT aunthentification
+- Multi-role registration
 
 ## Architecture
 
@@ -31,7 +32,19 @@ Requst route:
 
 ## Requirements
 
+- Go 1.26.1+
+- Docker 24.0+
+- Docker Compose 2.20+
+- PostgreSQL 16
+- Redis 7
+- Kafka latest
+- Create `.env` file in your folder (you can copy `.env.example`)
+- go libs are listed in go.mod
+
 ## Usage
+
+Check Makefile `make help` to see available commands.
+All incoming requests go to API Gateway on port 8080 (default)
 
 ## Microservices and endpoints
 
@@ -48,6 +61,7 @@ The service consists of 5 main microservices:
 Single entry point for all clients. Routes requests to internal gRPC services and handles cross-cutting concerns.
 
 #### Responsibilities
+
 - Routing (HTTP to gRPC)
 - Authentication (JWT validation)
 - Authorization (role-based access)
@@ -56,9 +70,10 @@ Single entry point for all clients. Routes requests to internal gRPC services an
 
 ---
 
-#### Architecture
+#### Gateway Architecture
 
 Client - API Gateway - gRPC Services:
+
 - Auth Service
 - Customer Service
 - Courier Service
@@ -70,15 +85,18 @@ Client - API Gateway - gRPC Services:
 
 1. Client sends request with:
 
-Authorization: Bearer <access_token>
+- Authorization: Bearer <access_token>
 
-2. Gateway:
+1. Gateway:
+
 - calls `AuthService.ValidateToken`
 
-3. If valid:
+1. If valid:
+
 - extracts `user_id`, `role`
 - injects into context / headers
-4. Forwards request to target service
+
+1. Forwards request to target service
 
 ---
 
@@ -95,10 +113,12 @@ Gateway must reject unauthorized roles early.
 #### Context Propagation
 
 Gateway should pass:
+
 - `user_id`
 - `role`
 
 via:
+
 - gRPC metadata
 
 #### Error Handling
@@ -107,12 +127,12 @@ via:
 - hide internal details
 - standard response format
 
-
 ### Auth (:9001)
 
 Authentication and authorization service (JWT + Refresh Token).
 
 #### Overview
+
 - Access Token - ~15 min
 - Refresh Token - ~7 days
 - Access - stateless
@@ -128,10 +148,26 @@ Authentication and authorization service (JWT + Refresh Token).
 
 ## Metrics
 
+Technical and buisiness metrics are collected and can be observed in Grafana (:3000)
+For now the metrics are:
+
+- RequestsTotal    - CounterVec
+- RequestDuration  - HistogramVec
+- RequestsInFlight - Gauge
+- OccusedErrors    - CounterVec
+- OrdersCreated    - Counter
+- OrdersDelivered  - Counter
+- OrdersCancelled  - Counter
+- OrdersInProgress - Gauge
+- OrdersWaiting    - Gauge
+- OrdersDelivering - Gauge
+- OrdersPrices     - Histogram
+
+And more can be easily added on your purpose.
+
 ## DB description
 
 ## Testing
-
 
 ## End-to-End Api Flow
 
@@ -140,8 +176,11 @@ Full system interaction scenarios.
 ## 1. Registration
 
 ### Customer
+
 `POST /api/v1/auth/register`
-```json
+
+```
+json
 {
   "username": "alice",
   "password": "secret123",
@@ -150,7 +189,8 @@ Full system interaction scenarios.
 ```
 
 ### Restaurant
-```json 
+
+```json
 {
   "username": "pizza_place",
   "password": "secret123",
@@ -162,7 +202,8 @@ Full system interaction scenarios.
 ```
 
 ### Courier
-```json 
+
+```json
 {
   "username": "courier_ivan",
   "password": "secret123",
@@ -174,8 +215,10 @@ Full system interaction scenarios.
 
 ## 2. Authentication
 
-### Login 
+### Login
+
 `POST /api/v1/auth/login`
+
 ```json
 {
   "username": "alice",
@@ -184,7 +227,8 @@ Full system interaction scenarios.
 ```
 
 ### Invalid password = 401 status
-```json 
+
+```json
 {
   "username": "alice",
   "password": "wrongpassword"
@@ -192,19 +236,25 @@ Full system interaction scenarios.
 ```
 
 ## Get profile
+
 `GET /api/v1/auth/profile`
+
 ### Header: Authorization: Bearer <access_token>
 
 ## Refresh token
+
 `POST /api/v1/auth/refresh`
-```json 
+
+```json
 {
     "refresh_token": "<refresh_token>"
 }
 ```
 
 ## 3. Restaurant Flow (Menu Management)
+
 ### Add product
+
 `POST /api/v1/restaurant/menu`
 
 ```json
@@ -216,12 +266,15 @@ Full system interaction scenarios.
 ```
 
 ### Update product
+
 `PUT /api/v1/restaurant/menu/{product_id}`
 
 ### Delete product
+
 `DELETE /api/v1/restaurant/menu/{product_id}`
 
 ## 4. Public endpoints
+
 `GET /api/v1/customer/restaurants`
 `GET /api/v1/customer/restaurants/{id}/menu`
 `GET /api/v1/restaurant/menu/{restaurant_id}`
@@ -230,7 +283,9 @@ Full system interaction scenarios.
 ## 5. Customer flow (Orders)
 
 ### Create order
+
 `POST /api/v1/customer/orders`
+
 ```json
 {
   "restaurant_id": "<restaurant_user_id>",
@@ -242,18 +297,22 @@ Full system interaction scenarios.
 }
 ```
 
-### List orders 
+### List orders
+
 `GET /api/v1/customer/orders`
 
 ### Get order
+
 `GET /api/v1/customer/orders/{order_id}`
 
 ## 6. Restaurant Order Flow
 
 ### View Orders
+
 `GET /api/v1/restaurant/orders`
 
 ### Update Status
+
 `PUT /api/v1/restaurant/orders/<order_id>/status`
 
 ``` json
@@ -266,28 +325,34 @@ Full system interaction scenarios.
 ## 7. Courier Flow
 
 ### Available Orders
+
 `GET /api/v1/courier/orders/available`
 
 ### Accept Order
+
 `POST /api/v1/courier/orders/{order_id}/accept`
 
 ### Pickup Order
+
 `POST /api/v1/courier/orders/{order_id}/pickup`
 
 ### Deliver Order
+
 `POST /api/v1/courier/orders/{order_id}/deliver`
 
 ## 8. Cancel Flow
 
 ### Cancel (CREATED only)
+
 `DELETE /api/v1/customer/orders/{order_id}`
 
 ## 9. Logout
 
 ### Logout
+
 `POST /api/v1/auth/logout`
 
-```json 
+```json
 {
   "refresh_token": "<refresh_token>"
 }

@@ -23,17 +23,41 @@ var (
 	ErrInvalidInput      = errors.New("invalid input")
 )
 
+type CustomerRepository interface {
+	CreateOrder(ctx context.Context, order *repository.Order, items []repository.OrderItem) error
+	GetOrderByID(ctx context.Context, orderID string) (*repository.Order, error)
+	GetOrderItems(ctx context.Context, orderID string) ([]repository.OrderItem, error)
+	GetOrderWithItems(ctx context.Context, orderID string) (*repository.OrderWithItems, error)
+	UpdateOrderStatus(ctx context.Context, orderID, status string) error
+	CancelOrder(ctx context.Context, orderID string) error
+	ListOrdersByUserID(ctx context.Context, userID string, limit, offset int32) ([]repository.OrderListItem, error)
+	CountOrdersByUserID(ctx context.Context, userID string) (int32, error)
+	CheckOrderBelongsToUser(ctx context.Context, orderID, userID string) (bool, error)
+	Close() error
+}
+
+type Producer interface {
+	Send(ctx context.Context, key string, payload any) error
+	Close() error
+}
+
+type Metrics interface {
+	IncError(method, errorType string)
+	OnOrderCreated(price float64)
+	OnOrderCancelled()
+}
+
 type CustomerService struct {
 	pb.UnimplementedCustomerAPIServer
-	pgRepo   *repository.PostgresRepo
-	producer *kafka.Producer
-	metrics  *metrics.Metrics
+	pgRepo   CustomerRepository
+	producer Producer
+	metrics  Metrics
 }
 
 func NewCustomerService(
-	pgRepo *repository.PostgresRepo,
-	p *kafka.Producer,
-	m *metrics.Metrics,
+	pgRepo CustomerRepository,
+	p Producer,
+	m Metrics,
 ) *CustomerService {
 	return &CustomerService{
 		pgRepo:   pgRepo,
@@ -230,8 +254,8 @@ func (s *CustomerService) CancelOrder(ctx context.Context, userID, orderID strin
 
 func (s *CustomerService) canCancel(status string) bool {
 	cancellableStatuses := map[string]bool{
-		"created": true,
-		"cooking": true,
+		"created":   true,
+		"confirmed": true,
 	}
 	return cancellableStatuses[status]
 }
