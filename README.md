@@ -177,7 +177,7 @@ Full system interaction scenarios.
 ## 2. Authentication
 
 ### Login 
-POST /api/v1/auth/login
+`POST /api/v1/auth/login`
 ```json
 {
   "username": "alice",
@@ -194,11 +194,11 @@ POST /api/v1/auth/login
 ```
 
 ## Get profile
-GET /api/v1/auth/profile
+`GET /api/v1/auth/profile`
 ### Header: Authorization: Bearer <access_token>
 
 ## Refresh token
-POST /api/v1/auth/refresh
+`POST /api/v1/auth/refresh`
 ```json 
 {
     "refresh_token": "<refresh_token>"
@@ -207,7 +207,7 @@ POST /api/v1/auth/refresh
 
 ## 3. Restaurant Flow (Menu Management)
 ### Add product
-POST /api/v1/restaurant/menu
+`POST /api/v1/restaurant/menu`
 
 ```json
 {
@@ -218,21 +218,21 @@ POST /api/v1/restaurant/menu
 ```
 
 ### Update product
-PUT /api/v1/restaurant/menu/{product_id}
+`PUT /api/v1/restaurant/menu/{product_id}`
 
 ### Delete product
-DELETE /api/v1/restaurant/menu/{product_id}
+`DELETE /api/v1/restaurant/menu/{product_id}`
 
 ## 4. Public endpoints
-GET /api/v1/customer/restaurants
-GET /api/v1/customer/restaurants/{id}/menu
-GET /api/v1/restaurant/menu/{restaurant_id}
-GET /api/v1/restaurant/menu/{restaurant_id}/product/{product_id}
+`GET /api/v1/customer/restaurants`
+`GET /api/v1/customer/restaurants/{id}/menu`
+`GET /api/v1/restaurant/menu/{restaurant_id}`
+`GET /api/v1/restaurant/menu/{restaurant_id}/product/{product_id}`
 
 ## 5. Customer flow (Orders)
 
 ### Create order
-POST /api/v1/customer/orders
+`POST /api/v1/customer/orders`
 ```json
 {
   "restaurant_id": "<restaurant_user_id>",
@@ -245,18 +245,19 @@ POST /api/v1/customer/orders
 ```
 
 ### List orders 
-GET /api/v1/customer/orders
+`GET /api/v1/customer/orders`
 
 ### Get order
-GET /api/v1/customer/orders/{order_id}
+`GET /api/v1/customer/orders/{order_id}`
 
 ## 6. Restaurant Order Flow
 
 ### View Orders
-GET /api/v1/restaurant/orders
+`GET /api/v1/restaurant/orders`
 
 ### Update Status
-PUT /api/v1/restaurant/orders/<order_id>/status
+`PUT /api/v1/restaurant/orders/<order_id>/status`
+
 ``` json
 {
   "status": 1
@@ -267,26 +268,27 @@ PUT /api/v1/restaurant/orders/<order_id>/status
 ## 7. Courier Flow
 
 ### Available Orders
-GET /api/v1/courier/orders/available
+`GET /api/v1/courier/orders/available`
 
 ### Accept Order
-POST /api/v1/courier/orders/{order_id}/accept
+`POST /api/v1/courier/orders/{order_id}/accept`
 
 ### Pickup Order
-POST /api/v1/courier/orders/{order_id}/pickup
+`POST /api/v1/courier/orders/{order_id}/pickup`
 
 ### Deliver Order
-POST /api/v1/courier/orders/{order_id}/deliver
+`POST /api/v1/courier/orders/{order_id}/deliver`
 
 ## 8. Cancel Flow
 
 ### Cancel (CREATED only)
-DELETE /api/v1/customer/orders/{order_id}
+`DELETE /api/v1/customer/orders/{order_id}`
 
 ## 9. Logout
 
 ### Logout
-POST /api/v1/auth/logout
+`POST /api/v1/auth/logout`
+
 ```json 
 {
   "refresh_token": "<refresh_token>"
