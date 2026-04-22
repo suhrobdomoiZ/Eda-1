@@ -236,7 +236,8 @@ func (r *PostgresRepo) CountActiveOrdersByCourier(ctx context.Context, courierID
 		SELECT COUNT(*)
 		FROM orders
 		WHERE courier_id = $1
-		  AND status IN ('delivering', 'picked_up')`
+		  	AND status = 'delivering'
+	`
 
 	var count int32
 	err := r.db.QueryRowContext(ctx, query, courierID).Scan(&count)

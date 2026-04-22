@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,17 +31,20 @@ type CourierService struct {
 	pgRepo   *repository.PostgresRepo
 	producer *kafka.Producer
 	metrics  *metrics.Metrics
+	logger   *slog.Logger
 }
 
 func NewCourierService(
 	pgRepo *repository.PostgresRepo,
 	p *kafka.Producer,
 	m *metrics.Metrics,
+	logger *slog.Logger,
 ) *CourierService {
 	return &CourierService{
 		pgRepo:   pgRepo,
 		producer: p,
 		metrics:  m,
+		logger:   logger,
 	}
 }
 
@@ -100,6 +104,7 @@ type AcceptOrderResult struct {
 
 func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID string) (*AcceptOrderResult, error) {
 	// Проверяем, что у курьера нет слишком много активных заказов
+	s.logger.Info("AcceptOrder called", "courier_id", courierID, "order_id", orderID)
 	activeCount, err := s.pgRepo.CountActiveOrdersByCourier(ctx, courierID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "count active orders: %v", err)
@@ -109,6 +114,10 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 	}
 
 	// Атомарно назначаем курьера и меняем статус на 'delivering'
+	orderBefore, _ := s.pgRepo.GetOrderByID(ctx, orderID)
+	if orderBefore != nil {
+		s.logger.Info("Order before accept", "status", orderBefore.Status, "courier_id", orderBefore.CourierID.String)
+	}
 	err = s.pgRepo.AssignCourierToOrder(ctx, orderID, courierID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -145,11 +154,13 @@ func (s *CourierService) AcceptOrder(ctx context.Context, courierID, orderID str
 		Status:       common_api.OrderStatus_ORDER_STATUS_DELIVERING,
 	}
 	event := kafka.ChangeOrderStatusEvent{
-		OrderId: uuid.MustParse(orderID),
+		OrderId:   uuid.MustParse(orderID),
+		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERING,
 	}
 	if err := s.producer.Send(ctx, orderID, event); err != nil {
 		// TODO: error metric
 	}
+	s.logger.Info("AcceptOrder success", "order_id", orderID)
 
 	return &AcceptOrderResult{
 		Success: true,
@@ -228,14 +239,6 @@ func (s *CourierService) PickUpOrder(ctx context.Context, courierID, orderID str
 		return nil, status.Errorf(codes.Internal, "update order status: %v", err)
 	}
 
-	event := kafka.ChangeOrderStatusEvent{
-		OrderId:   uuid.MustParse(orderID),
-		NewStatus: common_api.OrderStatus_ORDER_STATUS_DELIVERING,
-	}
-	if err := s.producer.Send(ctx, orderID, event); err != nil {
-		// TODO: error metric
-	}
-
 	s.metrics.OnOrderPickUp()
 
 	return &PickUpOrderResult{
@@ -266,8 +269,8 @@ func (s *CourierService) DeliverOrder(ctx context.Context, courierID, orderID st
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get order: %v", err)
 	}
-	if order.Status != "picked_up" {
-		return nil, status.Error(codes.FailedPrecondition, "order must be picked up before delivery")
+	if order.Status != "delivering" {
+		return nil, status.Error(codes.FailedPrecondition, "order must be in delivering before delivery")
 	}
 
 	// Обновляем статус на 'delivered'

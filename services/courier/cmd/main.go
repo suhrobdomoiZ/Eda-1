@@ -33,7 +33,7 @@ func main() {
 	m := metrics.NewMetrics("courier")
 	go func() {
 		http.Handle("/metrics", metrics.Handler())
-		logger.Info("courier metrics server listening on :%s", cfg.Metrics.Port)
+		logger.Info("courier metrics server listening", "port", cfg.Metrics.Port)
 		logger.Error(http.ListenAndServe(":"+cfg.Metrics.Port, nil).Error())
 	}()
 
@@ -50,7 +50,7 @@ func main() {
 	defer producer.Close()
 
 	// service
-	courierSvc := service.NewCourierService(pgRepo, producer, m)
+	courierSvc := service.NewCourierService(pgRepo, producer, m, logger)
 	courierHandler := handlers.NewCourierHandler(courierSvc)
 
 	// Kafka Consumer
@@ -61,7 +61,7 @@ func main() {
 	go func() {
 		consumerHandler := handlers.NewOrderConsumerHandler(courierSvc)
 		if err := consumer.Start(ctx, consumerHandler); err != nil {
-			logger.Info("kafka consumer stopped: %v", err)
+			logger.Info("kafka consumer stopped:", "error", err)
 		}
 	}()
 	defer consumer.Close()
@@ -79,7 +79,7 @@ func main() {
 		logger.Error("listen: %v", err)
 	}
 
-	logger.Info("courier gRPC server listening on %s", addr)
+	logger.Info("courier gRPC server listening", "port", addr)
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Error("serve: %v", err)
 	}

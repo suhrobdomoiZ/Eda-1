@@ -84,7 +84,11 @@ func (s *Restaurant) ChangeOrderStatus(ctx context.Context, order *models.OrderI
 	}
 	s.logger.Info("ChangeOrderStatus successfully done")
 
-	err = s.producer.Send(ctx, order.OrderId.String(), order.Status)
+	event := kafka.ChangeOrderStatusEvent{
+		OrderId:   order.OrderId,
+		NewStatus: order.Status,
+	}
+	err = s.producer.Send(ctx, order.OrderId.String(), event)
 	if err != nil {
 		s.logger.Error("producer.Send failed", "error", err)
 		return nil, err

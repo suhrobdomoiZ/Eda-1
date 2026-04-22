@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	common_api "github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
 	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/courier"
@@ -63,12 +64,13 @@ func (h *CourierHandler) AcceptOrder(ctx context.Context, req *pb.AcceptOrderReq
 	if err != nil {
 		return nil, err
 	}
-
+	log.Printf("[GRPC-HANDLER] AcceptOrder: courierID=%s, orderID=%s", courierID, req.OrderId)
 	result, err := h.svc.AcceptOrder(ctx, courierID, req.OrderId)
 	if err != nil {
 		return nil, err
 	}
 
+	log.Printf("[GRPC-HANDLER] AcceptOrder success")
 	return &pb.AcceptOrderResponse{
 		Success: result.Success,
 		Order:   result.Order,

@@ -25,6 +25,8 @@ func grpcError(c *fiber.Ctx, err error) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": st.Message()})
 	case codes.Unavailable:
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "service unavailable"})
+	case codes.FailedPrecondition:
+		return c.Status(fiber.StatusPreconditionFailed).JSON(fiber.Map{"error": st.Message()})
 	default:
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "internal error"})
 	}

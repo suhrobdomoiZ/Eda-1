@@ -34,7 +34,7 @@ func main() {
 	m := metrics.NewMetrics("customer")
 	go func() {
 		http.Handle("/metrics", metrics.Handler())
-		logger.Info("customer metrics server listening on :%s", cfg.Metrics.Port)
+		logger.Info("customer metrics server listening", "port", cfg.Metrics.Port)
 		logger.Error(http.ListenAndServe(":"+cfg.Metrics.Port, nil).Error())
 	}()
 
@@ -62,7 +62,7 @@ func main() {
 	go func() {
 		consumerHandler := handlers.NewOrderConsumerHandler(customerSvc)
 		if err := consumer.Start(ctx, consumerHandler); err != nil {
-			logger.Info("kafka consumer stopped: %v", err)
+			logger.Info("kafka consumer stopped:", "error", err)
 		}
 	}()
 	defer consumer.Close()
@@ -80,7 +80,7 @@ func main() {
 		logger.Error("listen: %v", err)
 	}
 
-	logger.Info("customer gRPC server listening on %s", addr)
+	logger.Info("customer gRPC server listening", "port", addr)
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Error("serve: %v", err)
 	}
