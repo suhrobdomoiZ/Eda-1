@@ -15,80 +15,43 @@ You can register as customer, restaurant or courier.
 
 ## Architecture
 
-Client (Web) -> (HTTP)
--> API Gateway (:8080) -> (gRPC)
-    -> Auth Service (:9001)
-    -> Restaurant Service (:9004)
-    -> Customer Service (:9005)
-    -> Courier Service (:9006)
-        -> PostgreSQL (:5432)
-        -> Kafka (:9092)
+Requst route:
+
+    Client (Web) -> (HTTP)
+    -> API Gateway (:8080) -> (gRPC)
+        -> Auth Service (:9001)
+        -> Restaurant Service (:9004)
+        -> Customer Service (:9005)
+        -> Courier Service (:9006)
+            -> PostgreSQL (:5432)
+            -> Kafka (:9092)
+
+## Requirements
+
+## Usage
 
 ## Microservices and endpoints
 
-## API Gateway (:8080)
+The service consists of 5 main microservices:
 
-## Auth (:9001)
+- API Gateway - entry point for users. Orchestrates all communications between microservices
+- Auth - users registration
+- Restaurant - menus creation and updating, restaurants listing
+- Customer - orders creation, cancelling and listing
+- Courier - checking for available orders, accepting orders and delivery confirmation
 
-## Restaurant (:9004)
+### API Gateway (:8080)
 
-## Customer (:9005)
+### Auth (:9001)
 
-## Courier (:9006)
+### Restaurant (:9004)
 
-# Сущности
-## Users
-- id UUID
-- role VARCHAR(32) ("user", "admin", "restaurant", 'courier')
-- username
-- password
-## Product
-- id UUID
-- restaurant_id
-- name
-- description
-- price
-## Orders
-- id UUID
-- restaurant_id
-- deliver_id
-- client_id
-- address
-- status:**("created", "made by restaurant", "delivered", "cancelled")**
-## Ordered_products
-- order_id PRIMARY KEY
-- item_id
-- count
+### Customer (:9005)
 
+### Courier (:9006)
 
-# Микросервисы
+## Metrics
 
-## API-gateway port:8080
-- Принимает запросы и валидируем их
-- перенаправляет куда надо
-## Авторизация port:8081
-- Собирает данные с формы регистрации/авторизации
-- Делает запрос/в БД
-- Возвращает ответ
+## DB description
 
-## Ресторан port:8082
-#### Управление меню
-- CRUD обычный
-#### Взаимодействие с заказом
-- Получает информацию о заказе(создали, отменили, доставили)
-
-## Клиент port:8083
-- Создать заказ/отменить заказ
-- получать статус заказа
-- список ресторанов
-
-## Курьер port:8084
-- Получить заказ
-- Отдать заказ
-
-
-# Глобально
-- БД
-- Сервер(внутрянка вся)
-- Метрики
-- Кафка
+## Testing

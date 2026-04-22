@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -24,18 +25,22 @@ import (
 func main() {
 	cfg := config.Load()
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	// metrics
 	m := metrics.NewMetrics("courier")
 	go func() {
 		http.Handle("/metrics", metrics.Handler())
-		log.Printf("courier metrics server listening on :%s", cfg.Metrics.Port)
-		log.Fatal(http.ListenAndServe(":"+cfg.Metrics.Port, nil))
+		logger.Info("courier metrics server listening on :%s", cfg.Metrics.Port)
+		logger.Error(http.ListenAndServe(":"+cfg.Metrics.Port, nil).Error())
 	}()
 
 	// postgreSQL
 	pgRepo, err := repository.NewPostgresRepo(cfg.Postgres.DSN())
 	if err != nil {
-		log.Fatalf("postgres: %v", err)
+		logger.Error("postgres: %v", err)
 	}
 	defer pgRepo.Close()
 
@@ -52,11 +57,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	consumer := kafka.NewConsumer(*kafkaCfg, nil)
+	consumer := kafka.NewConsumer(*kafkaCfg, logger)
 	go func() {
 		consumerHandler := handlers.NewOrderConsumerHandler(courierSvc)
 		if err := consumer.Start(ctx, consumerHandler); err != nil {
-			log.Printf("kafka consumer stopped: %v", err)
+			logger.Info("kafka consumer stopped: %v", err)
 		}
 	}()
 	defer consumer.Close()
@@ -71,11 +76,11 @@ func main() {
 	addr := fmt.Sprintf(":%s", cfg.GRPC.Port)
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatalf("listen: %v", err)
+		logger.Error("listen: %v", err)
 	}
 
-	log.Printf("courier gRPC server listening on %s", addr)
+	logger.Info("courier gRPC server listening on %s", addr)
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("serve: %v", err)
+		logger.Error("serve: %v", err)
 	}
 }

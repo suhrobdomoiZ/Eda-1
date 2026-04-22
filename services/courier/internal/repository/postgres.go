@@ -44,9 +44,19 @@ func (r *PostgresRepo) Close() error {
 func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order, error) {
 	order := &Order{}
 	query := `
-		SELECT id, client_id, restaurant_id, courier_id, address, total_price, status
-		FROM orders
-		WHERE id = $1`
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.id = $1
+		GROUP BY o.id`
 
 	var courierID sql.NullString
 	err := r.db.QueryRowContext(ctx, query, orderID).Scan(
@@ -72,10 +82,20 @@ func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order
 // Заказы со статусом 'ready' без назначенного курьера
 func (r *PostgresRepo) ListAvailableOrders(ctx context.Context, limit, offset int32) ([]Order, error) {
 	query := `
-		SELECT id, client_id, restaurant_id, courier_id, address, total_price, status
-		FROM orders
-		WHERE status = 'ready' AND courier_id IS NULL
-		ORDER BY id ASC
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.status = 'ready' AND o.courier_id IS NULL
+		GROUP BY o.id
+		ORDER BY o.id ASC
 		LIMIT $1 OFFSET $2`
 
 	rows, err := r.db.QueryContext(ctx, query, limit, offset)
@@ -155,10 +175,20 @@ func (r *PostgresRepo) CheckOrderAssignedToCourier(ctx context.Context, orderID,
 // Все заказы курьера
 func (r *PostgresRepo) ListOrdersByCourier(ctx context.Context, courierID string, limit, offset int32) ([]Order, error) {
 	query := `
-		SELECT id, client_id, restaurant_id, courier_id, address, total_price, status
-		FROM orders
-		WHERE courier_id = $1
-		ORDER BY id DESC
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.courier_id = $1
+		GROUP BY o.id
+		ORDER BY o.id DESC
 		LIMIT $2 OFFSET $3`
 
 	rows, err := r.db.QueryContext(ctx, query, courierID, limit, offset)

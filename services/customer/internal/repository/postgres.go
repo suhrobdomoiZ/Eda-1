@@ -63,15 +63,14 @@ func (r *PostgresRepo) CreateOrder(ctx context.Context, order *Order, items []Or
 	defer tx.Rollback()
 
 	orderQuery := `
-		INSERT INTO orders (id, client_id, restaurant_id, address, total_price, status)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		INSERT INTO orders (id, client_id, restaurant_id, address, status)
+		VALUES ($1, $2, $3, $4, $5)`
 
 	_, err = tx.ExecContext(ctx, orderQuery,
 		order.ID,
 		order.UserID,
 		order.RestaurantID,
 		order.Address,
-		order.TotalPrice,
 		order.Status,
 	)
 	if err != nil {
@@ -101,9 +100,19 @@ func (r *PostgresRepo) CreateOrder(ctx context.Context, order *Order, items []Or
 func (r *PostgresRepo) GetOrderByID(ctx context.Context, orderID string) (*Order, error) {
 	order := &Order{}
 	query := `
-		SELECT id, client_id, restaurant_id, courier_id, address, total_price, status
-		FROM orders
-		WHERE id = $1`
+		SELECT 
+			o.id, 
+			o.client_id, 
+			o.restaurant_id, 
+			o.courier_id, 
+			o.address, 
+			COALESCE(SUM(op.count * p.price), 0) AS total_price,
+			o.status
+		FROM orders o
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
+		WHERE o.id = $1
+		GROUP BY o.id`
 
 	var courierID sql.NullString
 	err := r.db.QueryRowContext(ctx, query, orderID).Scan(
@@ -222,10 +231,13 @@ func (r *PostgresRepo) ListOrdersByUserID(ctx context.Context, userID string, li
 			o.id, 
 			COALESCE(rp.name, 'Ресторан'), 
 			o.status, 
-			o.total_price
+			COALESCE(SUM(op.count * p.price), 0) AS total_price
 		FROM orders o
 		LEFT JOIN restaurant_profiles rp ON o.restaurant_id = rp.user_id
+		LEFT JOIN ordered_products op ON o.id = op.order_id
+		LEFT JOIN products p ON op.product_id = p.id
 		WHERE o.client_id = $1
+		GROUP BY o.id, rp.name
 		ORDER BY o.id DESC
 		LIMIT $2 OFFSET $3`
 
