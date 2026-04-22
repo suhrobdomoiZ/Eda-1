@@ -1,0 +1,323 @@
+package models
+
+import (
+	"github.com/google/uuid"
+	"github.com/suhrobdomoiZ/Eda-1/pkg/api/common"
+	pb "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant"
+	"github.com/suhrobdomoiZ/Eda-1/services/utils"
+)
+
+func ConvertAddProductRequestToProductInfo(recent *pb.AddProductRequest) (*ProductInfo, error) {
+	stringId := recent.ProductInfo.RestaurantId
+	if stringId == "" {
+		return nil, utils.ErrRestaurantIDRequired
+	}
+	restaurantId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrRestaurantIdIsIncorrectValue
+	}
+
+	name := recent.ProductInfo.Name
+	if name == "" {
+		return nil, utils.ErrNameRequired
+	}
+
+	description := recent.ProductInfo.Description //TODO: подумать над пустым description
+	if len([]rune(description)) > 1024 {
+		return nil, utils.ErrDescriptionTooLong
+	}
+
+	price := recent.ProductInfo.Price
+	if price < 0 {
+		return nil, utils.ErrPriceNegative
+	}
+
+	return &ProductInfo{
+		RestaurantId: restaurantId,
+		Name:         name,
+		Description:  description,
+		Price:        price,
+	}, nil
+}
+
+func ConvertUUIDToAddProductResponse(uuid uuid.UUID) *pb.AddProductResponse {
+	return &pb.AddProductResponse{
+		Id:     uuid.String(),
+		Status: utils.StatusOK,
+	}
+}
+
+func ConvertUpdateProductRequestToFullProduct(recent *pb.UpdateProductRequest) (*FullProduct, error) {
+	stringProductId := recent.Id
+	if stringProductId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+	productId, err := uuid.Parse(stringProductId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+
+	stringRestaurantId := recent.ProductInfo.RestaurantId
+	if stringRestaurantId == "" {
+		return nil, utils.ErrRestaurantIDRequired
+	}
+	restaurantId, err := uuid.Parse(stringRestaurantId)
+	if err != nil {
+		return nil, utils.ErrRestaurantIdIsIncorrectValue
+	}
+
+	name := recent.ProductInfo.Name
+	if name == "" {
+		return nil, utils.ErrNameRequired
+	}
+
+	description := recent.ProductInfo.Description //TODO: подумать над пустым description
+	if len([]rune(description)) > 1024 {
+		return nil, utils.ErrDescriptionTooLong
+	}
+
+	price := recent.ProductInfo.Price
+	if price < 0 {
+		return nil, utils.ErrPriceNegative
+	}
+
+	return &FullProduct{
+		Id:           productId,
+		RestaurantId: restaurantId,
+		Name:         name,
+		Description:  description,
+		Price:        price,
+	}, nil
+}
+
+func ConvertUUIDTOUpdateProductResponse(uuid uuid.UUID) *pb.UpdateProductResponse {
+	return &pb.UpdateProductResponse{
+		Id:     uuid.String(),
+		Status: utils.StatusOK,
+	}
+}
+
+func ConvertDeleteProductRequestToUUID(recent *pb.DeleteProductRequest) (*ProductId, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+
+	productId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+	return &ProductId{Id: productId}, nil
+}
+
+func ConvertStatusToDeleteProductResponse() *pb.DeleteProductResponse {
+	return &pb.DeleteProductResponse{
+		Status: utils.StatusOK,
+	}
+}
+
+func ConvertListProductsRequestToRestaurantId(recent *pb.ListProductsRequest) (*RestaurantId, error) {
+	stringRestaurantId := recent.RestaurantId
+	if stringRestaurantId == "" {
+		return nil, utils.ErrRestaurantIDRequired
+	}
+
+	restaurantId, err := uuid.Parse(recent.RestaurantId)
+	if err != nil {
+		return nil, utils.ErrRestaurantIdIsIncorrectValue
+	}
+
+	return &RestaurantId{Id: restaurantId}, nil
+}
+
+func ConvertSliceOfProductsToListProductsResponse(products []FullProduct) *pb.ListProductsResponse {
+	pbProducts := make([]*pb.FullProduct, len(products))
+	for i, p := range products {
+		pbProducts[i] = &pb.FullProduct{
+			Id: p.Id.String(),
+			Info: &pb.ProductInfo{
+				RestaurantId: p.RestaurantId.String(),
+				Name:         p.Name,
+				Description:  p.Description,
+				Price:        p.Price,
+			},
+		}
+	}
+
+	return &pb.ListProductsResponse{
+		Status:   utils.StatusOK,
+		Products: pbProducts,
+	}
+}
+
+func ConvertGetProductRequestToProductID(recent *pb.GetProductRequest) (*ProductId, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+
+	productId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+	return &ProductId{Id: productId}, nil
+}
+
+func ConvertFullProductToGetProductResponse(product *FullProduct) *pb.GetProductResponse {
+	return &pb.GetProductResponse{
+		Status: utils.StatusOK,
+		Product: &pb.FullProduct{
+			Id: product.Id.String(),
+			Info: &pb.ProductInfo{
+				RestaurantId: product.RestaurantId.String(),
+				Name:         product.Name,
+				Description:  product.Description,
+				Price:        product.Price,
+			},
+		},
+	}
+}
+
+func ConvertChangeOrderStatusRequestToOrderIDWithStatus(recent *pb.ChangeOrderStatusRequest) (*OrderIdWithStatus, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrProductIDRequired
+	}
+
+	orderId, err := uuid.Parse(stringId)
+	if err != nil {
+		return nil, utils.ErrProductIdIsIncorrectValue
+	}
+
+	rawStatus := recent.Status
+	if !IsValidOrderStatus(rawStatus) {
+		return nil, utils.ErrInvalidOrderStatus
+	}
+
+	return &OrderIdWithStatus{OrderId: orderId, Status: rawStatus}, nil
+}
+
+func ConvertCommonOrderStatusToDBStatus(recent common.OrderStatus) (DBOrderStatus, error) {
+	switch recent {
+	case common.OrderStatus_ORDER_STATUS_CREATED:
+		return "created", nil
+	case common.OrderStatus_ORDER_STATUS_COOKING:
+		return "cooking", nil
+	case common.OrderStatus_ORDER_STATUS_READY:
+		return "ready", nil
+	case common.OrderStatus_ORDER_STATUS_DELIVERING:
+		return "delivering", nil
+	case common.OrderStatus_ORDER_STATUS_DELIVERED:
+		return "delivered", nil
+	case common.OrderStatus_ORDER_STATUS_CANCELLED:
+		return "cancelled", nil
+	default:
+		return "", utils.ErrInvalidOrderStatus
+	}
+}
+
+func ConvertDBStatusToCommonOrderStatus(s string) common.OrderStatus {
+	switch s {
+	case "cooking":
+		return common.OrderStatus_ORDER_STATUS_COOKING
+	case "ready":
+		return common.OrderStatus_ORDER_STATUS_READY
+	case "delivering":
+		return common.OrderStatus_ORDER_STATUS_DELIVERING
+	case "delivered":
+		return common.OrderStatus_ORDER_STATUS_DELIVERED
+	case "cancelled":
+		return common.OrderStatus_ORDER_STATUS_CANCELLED
+	default:
+		return common.OrderStatus_ORDER_STATUS_CREATED
+	}
+}
+
+func ConvertChangedOrderIdToChangeOrderStatusResponse(changedOrderId *ChangedOrderId) *pb.ChangeOrderStatusResponse {
+	return &pb.ChangeOrderStatusResponse{
+		Id:     changedOrderId.OrderId.String(),
+		Status: utils.StatusOK,
+	}
+}
+
+func ConvertListOrdersRequestToRestaurantId(recent *pb.ListOrdersRequest) (*RestaurantId, error) {
+	stringId := recent.Id
+	if stringId == "" {
+		return nil, utils.ErrRestaurantIDRequired
+	}
+	restaurantId, err := uuid.Parse(stringId)
+
+	if err != nil {
+		return nil, utils.ErrRestaurantIdIsIncorrectValue
+	}
+
+	return &RestaurantId{Id: restaurantId}, nil
+}
+
+func ConvertOrderedProductToCommonOrderedItem(orderedProduct OrderedProduct) *common.OrderItem {
+	return &common.OrderItem{
+		ProductId: orderedProduct.ProductId.String(),
+		Quantity:  orderedProduct.Quantity,
+		Price:     orderedProduct.Price,
+		Name:      orderedProduct.Name,
+	}
+}
+
+func ConvertOrderToCommonOrder(order *Order) *common.Order {
+
+	var orderItems []*common.OrderItem
+
+	for _, item := range order.OrderedItems {
+		orderItems = append(orderItems, ConvertOrderedProductToCommonOrderedItem(item))
+	}
+
+	return &common.Order{
+		Id:           order.Id.String(),
+		RestaurantId: order.RestaurantId.String(),
+		CourierId:    order.CourierId.String(),
+		ClientId:     order.ClientId.String(),
+		TotalPrice:   order.TotalPrice,
+		Status:       order.OrderStatus,
+		Address:      order.Address,
+		Items:        orderItems,
+	}
+}
+
+func ConvertSliceOfOrdersToListOrdersResponse(array []Order) *pb.ListOrdersResponse {
+	var orders []*common.Order
+
+	for _, order := range array {
+		orders = append(orders, ConvertOrderToCommonOrder(&order))
+	}
+
+	return &pb.ListOrdersResponse{
+		Status: utils.StatusOK,
+		Orders: orders,
+	}
+}
+
+func ConvertListRestaurantsRequestToParams(req *pb.ListRestaurantsRequest) (limit, offset int32) {
+	limit = req.Limit
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset = req.Offset
+	return
+}
+
+func ConvertRestaurantsToResponse(restaurants []RestaurantInfo, total int32) *pb.ListRestaurantsResponse {
+	var pbRestaurants []*pb.RestaurantInfo
+	for _, r := range restaurants {
+		pbRestaurants = append(pbRestaurants, &pb.RestaurantInfo{
+			Id:   r.ID.String(),
+			Name: r.Name,
+		})
+	}
+	return &pb.ListRestaurantsResponse{
+		Restaurants: pbRestaurants,
+		Total:       total,
+	}
+}

@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+option go_package = "github.com/suhrobdomoiZ/Eda-1/pkg/api/restaurant";
+
+package pb;
+
+import "common.proto";
+
+service Restaurant{
+  rpc GetRestaurantMenu(GetRestaurantMenuRequest) returns (GetRestaurantMenuResponse);
+  rpc ListRestaurants(ListRestaurantsRequest) returns (ListRestaurantsResponse);
+
+  rpc AddProduct(AddProductRequest) returns(AddProductResponse); //добавляет продукт в меню
+  rpc UpdateProduct(UpdateProductRequest) returns(UpdateProductResponse); //изменяет продукт в меню
+  rpc DeleteProduct(DeleteProductRequest) returns(DeleteProductResponse); //удаляет продукт из меню
+
+  rpc ListProducts(ListProductsRequest) returns(ListProductsResponse); //показывает все продукты(то есть меню)
+  rpc GetProduct(GetProductRequest) returns(GetProductResponse); //показывает продукт по id
+
+  rpc ChangeOrderStatus(ChangeOrderStatusRequest) returns(ChangeOrderStatusResponse); //после передачи в доставку меняет статус
+  rpc ListOrders(ListOrdersRequest) returns(ListOrdersResponse); //возвращает список заказов
+}
+
+message ProductInfo{
+  string restaurant_id = 1;
+  string name = 2;
+  string description = 3;
+  int64 price = 4;
+}
+
+message FullProduct{
+  string id = 1;
+  ProductInfo info = 2;
+}
+
+message AddProductRequest{
+  ProductInfo product_info = 1;
+}
+
+message AddProductResponse{
+  string id = 1;
+  string status = 2;
+}
+
+message UpdateProductRequest{
+  string id = 1;
+  ProductInfo product_info = 2;
+}
+
+message UpdateProductResponse{
+  string id = 1;
+  string status = 2;
+}
+
+message DeleteProductRequest{
+  string id = 1;
+}
+
+message DeleteProductResponse{
+  string status = 1;
+}
+
+message ListProductsRequest{
+  string restaurant_id = 1;
+}
+
+message ListProductsResponse{
+  string status = 1;
+  repeated FullProduct products = 2;
+}
+
+message GetProductRequest{
+  string id = 1; //id продукта, ресторан не нужен так как оно и так уникальное
+}
+
+message GetProductResponse{
+  string status = 1;
+  FullProduct product = 2;
+}
+
+message ChangeOrderStatusRequest{
+  string id = 1; //id заказа
+  common.OrderStatus status = 2;
+}
+
+message ChangeOrderStatusResponse{
+  string id = 1;
+  string status = 2;//внутренний статус, не статус заказа
+}
+
+message ListOrdersRequest{
+  string id = 1;//id ресторана
+}
+
+message ListOrdersResponse{
+  string status = 1;
+  repeated common.Order orders = 2;
+}
+
+// Получение информации обо всех ресторанах
+
+message ListRestaurantsRequest {
+  int32 limit = 1;                          // Количество в одном запросе
+  int32 offset = 2;                         // Сдвиг от начала
+}
+
+message RestaurantInfo {
+  string id = 1;                            // id ресторана
+  string name = 2;                          // Название
+}
+
+message ListRestaurantsResponse {
+  repeated RestaurantInfo restaurants = 1;
+  int32 total = 2;
+}
+
+// Получение меню
+
+message GetRestaurantMenuRequest {
+  string restaurant_id = 1;
+}
+
+message MenuItem {
+  string id = 1;                            // id товара
+  string name = 2;                          // Название
+  string description = 3;                   // Описание
+  int64 price = 4;                          // Цена
+}
+
+message GetRestaurantMenuResponse {
+  string restaurant_id = 1;
+  string restaurant_name = 2;
+}

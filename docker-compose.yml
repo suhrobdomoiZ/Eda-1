@@ -1,0 +1,193 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  kafka:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_NODE_ID: ${KAFKA_NODE_ID}
+      KAFKA_PROCESS_ROLES: ${KAFKA_PROCESS_ROLES}
+      CLUSTER_ID: ${CLUSTER_ID}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_AUTO_CREATE_TOPICS_ENABLE}
+      KAFKA_NUM_PARTITIONS: ${KAFKA_NUM_PARTITIONS}
+      KAFKA_DEFAULT_REPLICATION_FACTOR: ${KAFKA_DEFAULT_REPLICATION_FACTOR}
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS}
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./deployment/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api_gateway
+    networks:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: eda-prometheus
+    volumes:
+      - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - backend
+    depends_on:
+      - customer
+      - courier
+      - restaurant
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: eda-grafana
+    ports:
+      - "${GRAFANA_PORT}:${GRAFANA_PORT}"
+    volumes:
+      - ./deployment/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./deployment/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=http://localhost:${GRAFANA_PORT}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    networks:
+      - backend
+    depends_on:
+      - prometheus
+
+  api_gateway:
+    build:
+      context: .
+      dockerfile: services/api_gateway/Dockerfile
+    ports:
+      - "${GATEWAY_HTTP_PORT}:${GATEWAY_HTTP_PORT}"
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    networks:
+      - backend
+
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  courier:
+    build:
+      context: .
+      dockerfile: services/courier/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - KAFKA_CONSUMER_GROUP=courier-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  customer:
+    build:
+      context: .
+      dockerfile: services/customer/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - KAFKA_CONSUMER_GROUP=customer-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  restaurant:
+    build:
+      context: .
+      dockerfile: services/restaurant/Dockerfile
+    env_file:
+     - .env
+    environment:
+      - KAFKA_CONSUMER_GROUP=restaurant-service
+    depends_on:
+      kafka:
+        condition: service_healthy
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  kafkadata:
+  prometheus_data:
+  grafana_data:
