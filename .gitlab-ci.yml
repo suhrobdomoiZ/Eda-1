@@ -15,7 +15,7 @@ lint:
   variables:
     GIT_DEPTH: 50
   before_script:
-    - go mod download
+    - go mod tidy
   script:
     - golangci-lint run --new-from-rev=origin/main --timeout=5m
   cache:
