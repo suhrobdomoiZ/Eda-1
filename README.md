@@ -252,13 +252,13 @@ Delivery management for couriers.
 - Prevents overloading
 
 #### Courier API Endpoints
-
 | Method | Path | Description |
-| GET | /orders/available | List available orders (ready) |
-| POST | /orders/:id/accept | Accept order |
-| GET | /orders | My orders (history + active) |
-| POST | /orders/:id/pickup | Mark as picked up |
-| POST | /orders/:id/deliver | Mark as delivered (returns earnings) |
+| :--- | :--- | :--- |
+| `GET` | `/orders/available` | List available orders (ready) |
+| `POST` | `/orders/:id/accept` | Accept order |
+| `GET` | `/orders` | My orders (history + active) |
+| `POST` | `/orders/:id/pickup` | Mark as picked up |
+| `POST` | `/orders/:id/deliver` | Mark as delivered (returns earnings) |
 
 #### Courier Database Tables
 
